@@ -1,0 +1,110 @@
+Prompt for Replit AI (fix white screen in Deployment / WebSocket + toLocaleString errors):
+
+I already have this crypto arbitrage app working locally, but in Replit Deployment when I log in as a user I just get a white blank screen.
+
+In the browser console (in the deployed version) I see errors like:
+
+WebSocket connection to 'wss://crypto-arbitrage-bot-analfsttr.replit.app/ws' failed: WebSocket is closed before the connection is established.
+
+WebSocket error, type 'error'
+
+Uncaught TypeError: Cannot read properties of null (reading 'toLocaleString')
+    at index-XXXXX.js:247:43314
+    ...
+
+
+I need you to fix these issues in the existing codebase (do NOT start a new project) so that the deployed app works correctly and does not show a white screen after login.
+
+1. Fix WebSocket URL and handling for Deployment
+
+Find the frontend code where the WebSocket client is created (something like new WebSocket(...) or Socket.IO initialization).
+
+Make the WebSocket URL dynamic and correct for both dev and production. For example, construct it from window.location:
+
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const host = window.location.host;
+const wsUrl = `${protocol}://${host}/ws`;
+const socket = new WebSocket(wsUrl);
+
+
+If there is a specific backend WS path (e.g. /api/ws), adjust accordingly.
+
+Make sure the backend actually exposes the WebSocket endpoint on that same path in the deployment environment.
+
+Very important: WebSocket connection failures must not crash the React app.
+
+Wrap WebSocket initialization in try/catch.
+
+Add onerror and onclose handlers that only log errors and maybe try a limited reconnect.
+
+Do NOT throw unhandled exceptions in these handlers.
+
+If the WebSocket cannot connect, the rest of the dashboard should still render normally using HTTP API data.
+
+If you are using any code that assumes the WebSocket is always connected (for example accessing socket when it’s null), guard against null and make the UI degrade gracefully.
+
+2. Fix toLocaleString null errors
+
+The second error is:
+
+Uncaught TypeError: Cannot read properties of null (reading 'toLocaleString')
+
+
+This happens in the deployed bundle when the frontend calls toLocaleString() on a null value (probably a date or number coming from the API).
+
+In the source code (before build) search for every place using toLocaleString( in the frontend components.
+
+For each of those occurrences, add safe guards so no null / undefined value is passed. For example:
+
+For numbers:
+
+const value = someNumber ?? 0;
+const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+
+Or, if you want to show something else when there is no value:
+
+const formatted = someNumber != null
+  ? someNumber.toLocaleString(undefined, { maximumFractionDigits: 2 })
+  : '0';
+
+
+For dates:
+
+const dateValue = someDate ? new Date(someDate) : null;
+const formatted = dateValue
+  ? dateValue.toLocaleString()
+  : '';
+
+
+Make sure that any data from the backend that might be null (balances, timestamps, PnL, etc.) is handled safely in the React components and never passed directly to toLocaleString() without checking.
+
+After adding these checks, the React app should never crash when data is missing or null—instead it should display a reasonable fallback (like 0, -, or empty string).
+
+3. Prevent white screen / unhandled runtime errors
+
+Ensure there is no unhandled exception in the main dashboard rendering code:
+
+Any mapping over arrays should guard against undefined (items || []).
+
+Any access like obj.field.toLocaleString() must first check obj.field != null.
+
+Optionally, add a simple React error boundary around the dashboard so that even if a component throws, the user sees an error message instead of a completely blank page.
+
+4. Verify in Deployment
+
+After you update the code:
+
+Rebuild and redeploy the app on Replit.
+
+Make sure:
+
+Sign in works.
+
+The dashboard renders instead of a white screen.
+
+The WebSocket either connects successfully or fails without breaking the UI.
+
+No TypeError: Cannot read properties of null (reading 'toLocaleString') appears in the console.
+
+Do all of this by editing the existing project files, preserving all current features (auth, dashboard, arbitrage logic, admin, etc.) and just fixing the WebSocket and null-handling issues.

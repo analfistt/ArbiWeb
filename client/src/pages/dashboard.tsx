@@ -61,42 +61,75 @@ export default function Dashboard() {
   useEffect(() => {
     if (!token) return;
 
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket | null = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'auth', token }));
-    };
-
-    ws.onmessage = (event) => {
+    const connectWebSocket = () => {
       try {
-        const message = JSON.parse(event.data);
-        
-        if (message.event === 'position_closed') {
-          // Refresh positions and dashboard data
-          queryClient.invalidateQueries({ queryKey: ["/api/positions"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-          
-          // Show toast notification
-          const isProfitable = message.data.finalPnlUsd >= 0;
-          toast({
-            title: message.data.message || (isProfitable ? "Position Closed in Profit" : "Position Closed in Loss"),
-            description: `${message.data.assetSymbol} ${message.data.entryExchange}→${message.data.exitExchange}: ${message.data.finalPnlUsd >= 0 ? '+' : ''}$${message.data.finalPnlUsd.toLocaleString()} (${message.data.finalPnlPercent >= 0 ? '+' : ''}${message.data.finalPnlPercent.toFixed(2)}%)`,
-            variant: isProfitable ? "default" : "destructive",
-          });
-        }
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log('WebSocket connected');
+          reconnectAttempts = 0;
+          if (ws) {
+            ws.send(JSON.stringify({ type: 'auth', token }));
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            
+            if (message.event === 'position_closed' && message.data) {
+              // Refresh positions and dashboard data
+              queryClient.invalidateQueries({ queryKey: ["/api/positions"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+              
+              // Show toast notification with safe data access
+              const finalPnlUsd = message.data.finalPnlUsd ?? 0;
+              const finalPnlPercent = message.data.finalPnlPercent ?? 0;
+              const isProfitable = finalPnlUsd >= 0;
+              
+              toast({
+                title: message.data.message || (isProfitable ? "Position Closed in Profit" : "Position Closed in Loss"),
+                description: `${message.data.assetSymbol || ''} ${message.data.entryExchange || ''}→${message.data.exitExchange || ''}: ${finalPnlUsd >= 0 ? '+' : ''}$${finalPnlUsd.toLocaleString()} (${finalPnlPercent >= 0 ? '+' : ''}${finalPnlPercent.toFixed(2)}%)`,
+                variant: isProfitable ? "default" : "destructive",
+              });
+            }
+          } catch (error) {
+            console.error('WebSocket message parse error:', error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          // Don't throw - just log the error
+        };
+
+        ws.onclose = () => {
+          console.log('WebSocket disconnected');
+          // Try to reconnect if we haven't exceeded max attempts
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            console.log(`Attempting to reconnect WebSocket (${reconnectAttempts}/${maxReconnectAttempts})...`);
+            setTimeout(connectWebSocket, 3000);
+          }
+        };
       } catch (error) {
-        console.error('WebSocket message parse error:', error);
+        console.error('Failed to initialize WebSocket:', error);
+        // Don't throw - app should work without WebSocket
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    connectWebSocket();
 
     return () => {
-      ws.close();
+      if (ws) {
+        ws.close();
+      }
     };
   }, [token, toast]);
 
@@ -245,30 +278,37 @@ export default function Dashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {positions.map((position: any) => (
-                          <TableRow key={position.id} data-testid={`row-position-${position.id}`}>
-                            <TableCell className="font-semibold">{position.assetSymbol}</TableCell>
-                            <TableCell className="text-right tabular-nums">{position.quantity}</TableCell>
-                            <TableCell className="text-right tabular-nums">${position.averageEntryPrice.toLocaleString()}</TableCell>
-                            <TableCell className="text-right tabular-nums">${position.currentValueUsd.toLocaleString()}</TableCell>
-                            <TableCell className="text-right tabular-nums font-semibold">${position.currentValueUsd.toLocaleString()}</TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              <span className={position.profitLossUsd >= 0 ? "text-green-600" : "text-red-600"}>
-                                {position.profitLossUsd >= 0 ? "+" : ""}${position.profitLossUsd.toLocaleString()}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant={position.profitLossPercent >= 0 ? "default" : "destructive"} className="tabular-nums">
-                                {position.profitLossPercent >= 0 ? (
-                                  <TrendingUp className="h-3 w-3 mr-1" />
-                                ) : (
-                                  <TrendingDown className="h-3 w-3 mr-1" />
-                                )}
-                                {position.profitLossPercent >= 0 ? "+" : ""}{position.profitLossPercent.toFixed(2)}%
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {positions.map((position: any) => {
+                          const averageEntryPrice = position.averageEntryPrice ?? 0;
+                          const currentValueUsd = position.currentValueUsd ?? 0;
+                          const profitLossUsd = position.profitLossUsd ?? 0;
+                          const profitLossPercent = position.profitLossPercent ?? 0;
+                          
+                          return (
+                            <TableRow key={position.id} data-testid={`row-position-${position.id}`}>
+                              <TableCell className="font-semibold">{position.assetSymbol || '-'}</TableCell>
+                              <TableCell className="text-right tabular-nums">{position.quantity ?? 0}</TableCell>
+                              <TableCell className="text-right tabular-nums">${averageEntryPrice.toLocaleString()}</TableCell>
+                              <TableCell className="text-right tabular-nums">${currentValueUsd.toLocaleString()}</TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">${currentValueUsd.toLocaleString()}</TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                <span className={profitLossUsd >= 0 ? "text-green-600" : "text-red-600"}>
+                                  {profitLossUsd >= 0 ? "+" : ""}${profitLossUsd.toLocaleString()}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant={profitLossPercent >= 0 ? "default" : "destructive"} className="tabular-nums">
+                                  {profitLossPercent >= 0 ? (
+                                    <TrendingUp className="h-3 w-3 mr-1" />
+                                  ) : (
+                                    <TrendingDown className="h-3 w-3 mr-1" />
+                                  )}
+                                  {profitLossPercent >= 0 ? "+" : ""}{profitLossPercent.toFixed(2)}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -309,48 +349,62 @@ export default function Dashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {arbitragePositions.map((pos: any) => (
-                          <TableRow key={pos.id} data-testid={`row-arb-position-${pos.id}`}>
-                            <TableCell>
-                              <Badge variant="secondary">{pos.assetSymbol}</Badge>
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {pos.entryExchange} → {pos.exitExchange}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              ${pos.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              ${pos.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {pos.quantity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="space-y-1">
-                                <div className={`font-semibold tabular-nums ${pos.finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {pos.finalPnlUsd >= 0 ? (
-                                    <TrendingUp className="h-3 w-3 inline mr-1" />
-                                  ) : (
-                                    <TrendingDown className="h-3 w-3 inline mr-1" />
-                                  )}
-                                  {pos.finalPnlUsd >= 0 ? '+' : ''}${pos.finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                                <div className={`text-xs tabular-nums ${pos.finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  ({pos.finalPnlPercent >= 0 ? '+' : ''}{pos.finalPnlPercent.toFixed(2)}%)
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={pos.status === "open" ? "default" : "secondary"}>
-                                {pos.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {new Date(pos.openedAt).toLocaleDateString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {arbitragePositions.map((pos: any) => {
+                          const entryPrice = pos.entryPrice ?? 0;
+                          const exitPrice = pos.exitPrice;
+                          const quantity = pos.quantity ?? 0;
+                          const finalPnlUsd = pos.finalPnlUsd;
+                          const finalPnlPercent = pos.finalPnlPercent;
+                          
+                          return (
+                            <TableRow key={pos.id} data-testid={`row-arb-position-${pos.id}`}>
+                              <TableCell>
+                                <Badge variant="secondary">{pos.assetSymbol || '-'}</Badge>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {pos.entryExchange || '-'} → {pos.exitExchange || '-'}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                ${entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {exitPrice !== null 
+                                  ? `$${exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : '-'}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {quantity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {finalPnlUsd !== null ? (
+                                  <div className="space-y-1">
+                                    <div className={`font-semibold tabular-nums ${finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {finalPnlUsd >= 0 ? (
+                                        <TrendingUp className="h-3 w-3 inline mr-1" />
+                                      ) : (
+                                        <TrendingDown className="h-3 w-3 inline mr-1" />
+                                      )}
+                                      {finalPnlUsd >= 0 ? '+' : ''}${finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    <div className={`text-xs tabular-nums ${(finalPnlPercent ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ({(finalPnlPercent ?? 0) >= 0 ? '+' : ''}{(finalPnlPercent ?? 0).toFixed(2)}%)
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={pos.status === "open" ? "default" : "secondary"}>
+                                  {pos.status || 'unknown'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {pos.openedAt ? new Date(pos.openedAt).toLocaleDateString() : '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -404,26 +458,32 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  opportunities?.slice(0, 5).map((opp: any, idx: number) => (
-                    <div key={idx} className="p-4 border rounded-lg hover-elevate" data-testid={`card-opportunity-${idx}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-display font-bold text-lg">{opp.asset}</span>
-                        <Badge className="bg-green-600 text-white">
-                          {opp.spread.toFixed(2)}% Spread
-                        </Badge>
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Buy on {opp.buyExchange}</span>
-                          <span className="font-semibold tabular-nums">${opp.buyPrice.toLocaleString()}</span>
+                  opportunities?.slice(0, 5).map((opp: any, idx: number) => {
+                    const spread = opp.spread ?? 0;
+                    const buyPrice = opp.buyPrice ?? 0;
+                    const sellPrice = opp.sellPrice ?? 0;
+                    
+                    return (
+                      <div key={idx} className="p-4 border rounded-lg hover-elevate" data-testid={`card-opportunity-${idx}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-display font-bold text-lg">{opp.asset || '-'}</span>
+                          <Badge className="bg-green-600 text-white">
+                            {spread.toFixed(2)}% Spread
+                          </Badge>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Sell on {opp.sellExchange}</span>
-                          <span className="font-semibold tabular-nums">${opp.sellPrice.toLocaleString()}</span>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Buy on {opp.buyExchange || '-'}</span>
+                            <span className="font-semibold tabular-nums">${buyPrice.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Sell on {opp.sellExchange || '-'}</span>
+                            <span className="font-semibold tabular-nums">${sellPrice.toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </CardContent>
             </Card>
