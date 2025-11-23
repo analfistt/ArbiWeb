@@ -1,0 +1,412 @@
+Build a full-stack crypto arbitrage web application with the following requirements. Use a modern tech stack that works well on Replit (for example: Python FastAPI or Node.js/Express for backend, and React or a simple responsive frontend using HTML/CSS/JS + a modern UI library like Tailwind or Bootstrap). Use SQLite as the database.
+
+Core Concept
+
+This is a demo arbitrage trading platform where:
+
+Users can sign up, log in and see a personal dashboard.
+
+Admin has a Back Office / Admin Panel that controls everything, including:
+
+user balances
+
+user profit/loss
+
+status of withdrawals and deposits
+
+The actual arbitrage logic can be simulated / mocked (no need to execute real trades), but the UI should look like a real arbitrage platform.
+
+Main Features
+1. Authentication & Users
+
+Implement Login / Sign Up with:
+
+Email
+
+Password (hashed)
+
+Optional username
+
+Store users in SQLite.
+
+Use session or JWT for authentication.
+
+Users can only see their own data.
+
+Admin user:
+
+Seed a default admin user (for example: email: admin@site.com, password: Admin123!).
+
+Admin has access to a Back Office.
+
+2. Database (SQLite)
+
+Create at least these tables:
+
+users
+
+id
+
+email
+
+password_hash
+
+is_admin (boolean)
+
+created_at
+
+wallets or balances
+
+id
+
+user_id (FK)
+
+total_balance_usd (float)
+
+available_balance_usd (float)
+
+created_at
+
+updated_at
+
+portfolio_positions
+
+id
+
+user_id (FK)
+
+asset_symbol (e.g. BTC, ETH, USDT)
+
+average_entry_price
+
+quantity
+
+current_value_usd
+
+profit_loss_usd
+
+profit_loss_percent
+
+last_updated
+
+transactions
+
+id
+
+user_id (FK)
+
+type (deposit, withdrawal, trade, adjustment)
+
+amount_usd
+
+status (pending, completed, rejected)
+
+tx_hash_or_reference (string, nullable)
+
+created_at
+
+admin_adjustments
+
+id
+
+user_id (FK)
+
+delta_balance_usd
+
+note
+
+created_at
+
+You may add more tables if needed.
+
+3. Landing Page (Public)
+
+Create a marketing landing page inspired by the layout and style of this page:
+https://oddsjam.com/betting-tools/arbitrage
+
+Do NOT copy text, but use similar structure:
+
+Hero section with:
+
+Big headline about Crypto Arbitrage Trading
+
+Subheadline explaining that the platform finds opportunities across multiple exchanges.
+
+Strong “Call to Action” buttons:
+
+“Sign In to Dashboard”
+
+“Sign Up”
+
+Sections:
+
+“How it Works” – simple 3-4 steps explaining:
+
+Deposit crypto or USD
+
+System finds arbitrage between exchanges
+
+You see your profits in your portfolio
+
+“Supported Exchanges” – show logos / names like:
+
+Binance
+
+Kraken
+
+Coinbase
+
+(You can add more dummy exchanges)
+
+“Why Us” – highlight:
+
+Real-time market data
+
+Automated arbitrage engine (simulated)
+
+Simple dashboard for tracking profits
+
+Design requirements:
+
+Clean, modern UI/UX
+
+Responsive design (works on desktop and mobile)
+
+Use neutral dark / light theme suitable for finance/crypto.
+
+Add a top navigation bar with:
+
+Logo / site name (e.g. “ArbiTradeX” placeholder)
+
+Links: “Home”, “Features”, “Dashboard”, “Sign In”, “Sign Up”
+
+4. User Dashboard (Client Area)
+
+After login, user sees a dashboard with:
+
+Top Summary Cards
+
+Total Balance (USD)
+
+Realized Profit/Loss (USD)
+
+Unrealized Profit/Loss (USD)
+
+Number of active positions
+
+Portfolio Section
+
+Table showing each asset:
+
+Asset (symbol + icon if possible)
+
+Quantity
+
+Average entry price
+
+Current price
+
+Current value (USD)
+
+P/L (USD)
+
+P/L %
+
+P/L % should be:
+
+Green with an up arrow when positive.
+
+Red with a down arrow when negative.
+
+Arbitrage Opportunities Section
+
+Table or cards showing simulated arbitrage opportunities across exchanges, for example:
+
+BTC: Buy on Binance @ $X, Sell on Kraken @ $Y, Spread Z%
+
+ETH: Buy on Coinbase @ $X, Sell on Binance @ $Y, Spread Z%
+
+Show multiple exchanges like:
+
+Binance
+
+Kraken
+
+Coinbase
+
+(and a few more dummy names)
+
+These can be mocked but should look realistic using real-time prices from an external crypto price API.
+
+Balance & Wallet Section
+
+Show user’s current balance.
+
+Buttons:
+
+Deposit
+
+Withdraw
+
+Deposit Integration with NowPayments
+
+Integrate NowPayments API (or at least scaffold the integration with clear placeholders and sample code).
+
+User flow:
+
+User clicks “Deposit”.
+
+Chooses currency/amount.
+
+System creates a payment via NowPayments API.
+
+Show deposit address or payment link.
+
+For this demo, you can simulate completion, but code should be structured to easily plug in the real NowPayments API keys and callbacks.
+
+Withdraw Functionality
+
+User clicks Withdraw and submits:
+
+Amount
+
+Destination address (string)
+
+Save withdrawal request as a record in transactions with status = pending.
+
+Admin can later mark it as completed or rejected in the Back Office.
+
+On completion, balance is decreased.
+
+Crypto Prices & Charts
+
+Use a reliable crypto price API, for example CoinGecko or Binance public API, to get real-time prices.
+
+Show:
+
+Line chart for major coins (BTC, ETH, etc.) on the dashboard.
+
+Current prices in a ticker or table.
+
+Use a standard charting library (like Chart.js or similar) on the frontend.
+
+5. Admin Back Office
+
+Create a separate Admin Dashboard (protected route, only for is_admin = true) with these functions:
+
+User Management
+
+List of all users.
+
+View a single user’s:
+
+Profile
+
+Balance
+
+Portfolio
+
+Transactions
+
+Buttons to:
+
+Adjust user balance (increase/decrease).
+
+Mark withdrawal as completed or rejected.
+
+Manually set or update “profit/loss” for demonstration.
+
+Control User Profits
+
+Admin should be able to set or override:
+
+profit_loss_usd
+
+profit_loss_percent
+
+After admin changes these values, the user’s dashboard and portfolio should update accordingly with green/red percentages and arrows.
+
+Transaction Monitoring
+
+Table of all deposits and withdrawals with filters by status.
+
+Options to approve/reject withdrawals.
+
+Basic Analytics (Optional but nice to have)
+
+Total number of users.
+
+Total deposits, withdrawals.
+
+Total “platform P/L”.
+
+6. UI/UX Requirements
+
+The overall design should look professional, like a real crypto SaaS dashboard.
+
+Use clear typography, spacing, and cards.
+
+Use different colors for:
+
+Profits: green, up arrow.
+
+Losses: red, down arrow.
+
+Navigation:
+
+Public pages: Landing page.
+
+Auth pages: Login, Sign Up.
+
+Authenticated user pages: Dashboard, Portfolio, Transactions, Settings.
+
+Admin pages: Admin Dashboard (with sub-sections).
+
+7. Technical Details & Structure
+
+Use SQLite as the persistent storage, with migration or initialization scripts.
+
+Provide a clear README that explains:
+
+How to run the project on Replit.
+
+How to set environment variables (e.g. NOWPAYMENTS API keys, JWT secret).
+
+Default admin credentials.
+
+Organize the code cleanly:
+
+backend/ (API routes, DB models, auth logic)
+
+frontend/ (React or static HTML/JS for UI)
+
+Or a simple monolith structure but clearly separated routes/files.
+
+Make sure:
+
+API endpoints are RESTful.
+
+Authentication is secure enough for a demo (no plain text passwords).
+
+Protect sensitive routes (dashboard, admin) with proper auth checks.
+
+Goal:
+Generate all the necessary backend, frontend, database models, and integration stubs so that I have a working demo crypto arbitrage trading platform with:
+
+SQLite DB
+
+Login/Sign Up
+
+User dashboard with balance, portfolio, arbitrage opportunities, charts
+
+Deposit via NowPayments (integration scaffold)
+
+Withdraw button and flow
+
+Admin Back Office that controls user profits, balances, and withdrawals
+
+Modern, clean, responsive UI/UX
+
+Landing page similar in concept to OddsJam arbitrage tools page, with Sign In / Sign Up buttons leading to the auth pages.
+
+You can stop here and I’ll test the generated project.
