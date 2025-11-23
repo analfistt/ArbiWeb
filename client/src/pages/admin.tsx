@@ -434,7 +434,9 @@ export default function Admin() {
                             ${pos.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            ${pos.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {pos.exitPrice !== null 
+                              ? `$${pos.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : "-"}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {pos.quantity.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 })}
@@ -443,19 +445,23 @@ export default function Admin() {
                             ${pos.notionalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="space-y-1">
-                              <div className={`font-semibold tabular-nums ${pos.finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {pos.finalPnlUsd >= 0 ? '+' : ''}${pos.finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {pos.finalPnlUsd !== null ? (
+                              <div className="space-y-1">
+                                <div className={`font-semibold tabular-nums ${pos.finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {pos.finalPnlUsd >= 0 ? '+' : ''}${pos.finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                                <div className={`text-xs tabular-nums ${pos.finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ({pos.finalPnlPercent >= 0 ? '+' : ''}{pos.finalPnlPercent.toFixed(2)}%)
+                                </div>
+                                {pos.overridePnlUsd !== null && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Override
+                                  </Badge>
+                                )}
                               </div>
-                              <div className={`text-xs tabular-nums ${pos.finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ({pos.finalPnlPercent >= 0 ? '+' : ''}{pos.finalPnlPercent.toFixed(2)}%)
-                              </div>
-                              {pos.overridePnlUsd !== null && (
-                                <Badge variant="outline" className="text-xs">
-                                  Override
-                                </Badge>
-                              )}
-                            </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant={pos.status === "open" ? "default" : "secondary"}>
