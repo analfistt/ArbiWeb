@@ -1,0 +1,361 @@
+I already have a working full-stack crypto arbitrage web app with:
+
+SQLite database
+
+User authentication and dashboard
+
+Admin Back Office
+
+Deposits / balances
+
+Crypto price API and basic arbitrage UI
+
+Now I want you to extend the existing project (do NOT start a new one) and add a complete system where the admin can open and close arbitrage positions on behalf of users, and fully control the profit shown to the user.
+
+1. New Concept: Admin-Created Arbitrage Positions
+
+Add a feature where the admin can:
+
+Select a specific user.
+
+Open an arbitrage position for that user, e.g.:
+
+Buy 10 SOL on Kraken at $100
+
+Sell 10 SOL on Binance at $110
+
+The system should:
+
+Store the position details.
+
+Calculate the “natural” profit (e.g. (110 - 100) * 10 = 100 USD).
+
+Allow the admin to override the profit and set any profit they want, including something unrealistic (like 1,000,000 USD) for demonstration.
+
+The user will see:
+
+The position in their portfolio/history.
+
+The profit in USD and percentage.
+
+A notification when the order is closed in profit or in loss.
+
+2. Database: Positions Table
+
+Add or extend a table for positions, for example: positions or improve the existing portfolio_positions structure.
+
+Suggested new table: arbitrage_positions with fields like:
+
+id
+
+user_id (FK)
+
+asset_symbol (e.g. SOL, BTC, ETH)
+
+entry_exchange (e.g. Kraken)
+
+exit_exchange (e.g. Binance)
+
+entry_price (float, USD)
+
+exit_price (float, USD)
+
+quantity (float)
+
+notional_value_usd (derived, e.g. entry_price * quantity)
+
+raw_pnl_usd (calculated automatically: (exit_price - entry_price) * quantity)
+
+raw_pnl_percent (calculated automatically)
+
+override_pnl_usd (nullable; when set, this is the PnL shown to the user)
+
+override_pnl_percent (nullable)
+
+final_pnl_usd (what is actually used in UI: override_pnl_usd if present, otherwise raw_pnl_usd)
+
+final_pnl_percent (same logic)
+
+status (open, closed)
+
+opened_at
+
+closed_at
+
+Optional JSON field details (extra notes, e.g. “bought on Kraken, sold on Binance”)
+
+Make sure this table is linked cleanly with the existing user, wallet/balance, and transactions tables.
+
+3. Admin Flow: Open & Close Position
+
+In the Admin Back Office, add a new section: “User Positions” or “Arbitrage Positions”.
+
+3.1 Create / Open Position (Admin UI and API)
+
+Admin UI form should allow:
+
+Select user (dropdown of users with email/ID).
+
+Choose asset: SOL, BTC, ETH, USDT, USDC (and more if needed).
+
+Choose:
+
+Entry Exchange (e.g. Kraken, Binance, Coinbase etc.)
+
+Exit Exchange (e.g. Binance, Kraken, etc.)
+
+Input:
+
+Entry Price (USD)
+
+Exit Price (USD)
+
+Quantity
+
+Optionally:
+
+Override PnL (USD) – admin can type any profit/loss number (e.g. +100, -50, +1000000).
+
+Override PnL (%) – optional; if left empty, compute from override_pnl_usd.
+
+Backend endpoint example:
+
+POST /api/admin/positions/create
+
+Logic:
+
+Require admin authentication.
+
+Create a new arbitrage_positions record with:
+
+The exchanges, prices, quantity.
+
+raw_pnl_usd and raw_pnl_percent computed from entry/exit prices.
+
+If override_pnl_usd is provided, store it and compute override_pnl_percent.
+
+Compute and store final_pnl_usd and final_pnl_percent using override if present.
+
+Set status = 'open'.
+
+Optionally create a transactions log entry of type trade or position_open for traceability.
+
+The position remains “open” until the admin closes it.
+
+3.2 Close Position (Admin UI and API)
+
+Admin should be able to close a position for the user:
+
+A button “Close Position” in the admin positions list / detail view.
+
+Backend endpoint example:
+
+POST /api/admin/positions/:id/close
+
+Logic when closing:
+
+Verify admin permissions.
+
+Set status = 'closed' and closed_at = now.
+
+Use final_pnl_usd to:
+
+Update the user’s wallet/balance (e.g. add profit to total_balance_usd).
+
+If negative, subtract from balance.
+
+Save a transactions entry:
+
+type = 'trade' or position_close
+
+amount_usd = final_pnl_usd
+
+status = 'completed'
+
+Reference the position_id.
+
+Trigger a WebSocket event (see section 5) so:
+
+The user gets a notification (“Order has been Closed in Profit” or “Order has been Closed in Loss”).
+
+The user’s dashboard and admin panel update live.
+
+4. User Dashboard: Show Positions & Profit
+
+In the user dashboard, add a “Positions” or “Arbitrage History” section:
+
+Table columns:
+
+Time opened / time closed
+
+Asset
+
+Entry exchange → Exit exchange (e.g. “Kraken → Binance”)
+
+Quantity
+
+Entry price
+
+Exit price
+
+Profit/Loss (USD)
+
+Profit/Loss (%)
+
+Status (open/closed)
+
+Design rules:
+
+If final_pnl_usd > 0:
+
+Show the PnL in green with an up arrow.
+
+For example: +100.00 USD with a small ▲ icon.
+
+If final_pnl_usd < 0:
+
+Show the PnL in red with a down arrow.
+
+If final_pnl_usd == 0:
+
+Neutral color.
+
+Also update the top summary cards to include:
+
+“Realized Profit/Loss” – sum of final_pnl_usd for all closed positions.
+
+Portfolio metrics should reflect these closed positions.
+
+5. Notifications & WebSockets
+
+Use the existing WebSocket infrastructure (that we already use for deposits) and extend it for position events.
+
+5.1 Backend WebSocket Events
+
+Add events such as:
+
+position_closed (for users)
+
+Sent to room user_<userId> when an admin closes a position.
+
+Payload:
+
+position_id
+
+asset_symbol
+
+final_pnl_usd
+
+final_pnl_percent
+
+status = 'closed'
+
+A short message like:
+
+If final_pnl_usd > 0: "Order has been Closed in Profit"
+
+If final_pnl_usd < 0: "Order has been Closed in Loss"
+
+admin_positions_update (for admin dashboard)
+
+Sent to the admin_dashboard room.
+
+Payload includes:
+
+User info (id, email)
+
+Position summary
+
+New balance after profit/loss applied
+
+5.2 Frontend Notification UI
+
+User side:
+
+When position_closed WebSocket event arrives:
+
+Show a toast or notification:
+
+Example for profit: “Order has been Closed in Profit: +100 USD on SOL (Kraken → Binance)”
+
+Example for loss: “Order has been Closed in Loss: -50 USD on BTC (Binance → Kraken)”
+
+Update:
+
+The positions table row for that position.
+
+The user balance.
+
+The realized PnL in the summary.
+
+Admin side:
+
+When admin_positions_update event arrives:
+
+Update the positions list.
+
+Update user balance shown in the admin’s view (if displayed).
+
+6. Real-Time Crypto Prices for Admin
+
+Use the existing crypto price API (e.g. CoinGecko or Binance public API) to help admin fill in prices:
+
+Add a small helper panel or price fetcher in the Admin “Create Position” form:
+
+Admin chooses asset symbol (e.g. SOL).
+
+Admin chooses entry and exit exchange names (UI-level).
+
+Use the existing price API to fetch current market price for that asset.
+
+Prefill suggested prices for entry/exit, but allow admin to manually edit them for arbitrary demonstration scenarios.
+
+The main requirement:
+
+Admin can fully control the profit shown to the user:
+
+The system calculates raw PnL from entry/exit prices.
+
+Admin can override PnL with any number, including +1,000,000 USD.
+
+User will see final_pnl_usd and final_pnl_percent in all UI and summaries.
+
+7. Keep Everything Consistent
+
+Reuse existing authentication and WebSocket logic.
+
+Reuse existing balance update logic used for deposits/withdrawals.
+
+Ensure all new APIs are protected:
+
+Admin-only endpoints for creating/closing positions.
+
+User endpoints must never allow the user to modify their own PnL.
+
+Goal:
+
+After your changes:
+
+As admin, I can:
+
+Select a user.
+
+Create an arbitrage position (e.g. buy 10 SOL on Kraken @ 100, sell on Binance @ 110).
+
+Override the profit to any number I want (even 1,000,000).
+
+Close the position, which:
+
+Updates the user’s balance.
+
+Records a transaction.
+
+Sends a WebSocket notification.
+
+As user, I can:
+
+See the position, the exchanges, the quantity, and the profit.
+
+See profit in green with an up arrow when positive, red with a down arrow when negative.
+
+Get a notification: “Order has been Closed in Profit” (or “…in Loss”) when the admin closes the trade.

@@ -7,8 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, LogOut, Users, Search, CheckCircle, XCircle, DollarSign } from "lucide-react";
+import { TrendingUp, LogOut, Users, Search, CheckCircle, XCircle, DollarSign, ArrowLeftRight, Plus } from "lucide-react";
 import { AdjustBalanceDialog } from "@/components/adjust-balance-dialog";
+import { CreatePositionDialog } from "@/components/create-position-dialog";
+import { ClosePositionDialog } from "@/components/close-position-dialog";
 import { useAuth } from "@/lib/auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +20,9 @@ export default function Admin() {
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [createPositionDialogOpen, setCreatePositionDialogOpen] = useState(false);
+  const [closePositionDialogOpen, setClosePositionDialogOpen] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch all users
@@ -41,6 +46,19 @@ export default function Admin() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch transactions");
+      return response.json();
+    },
+    enabled: !!token,
+  });
+
+  // Fetch all arbitrage positions
+  const { data: positions, isLoading: isPositionsLoading } = useQuery({
+    queryKey: ["/api/admin/positions"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/positions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Failed to fetch positions");
       return response.json();
     },
     enabled: !!token,
@@ -93,6 +111,11 @@ export default function Admin() {
     setAdjustDialogOpen(true);
   };
 
+  const handleOpenCloseDialog = (position: any) => {
+    setSelectedPosition(position);
+    setClosePositionDialogOpen(true);
+  };
+
   const filteredUsers = users?.filter((user: any) => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
@@ -103,7 +126,9 @@ export default function Admin() {
 
   const totalPlatformBalance = users?.reduce((sum: number, u: any) => sum + u.balance, 0) || 0;
 
-  if (isUsersLoading || isTransactionsLoading) {
+  const openPositions = positions?.filter((pos: any) => pos.status === "open").length || 0;
+
+  if (isUsersLoading || isTransactionsLoading || isPositionsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <nav className="border-b">
@@ -202,6 +227,10 @@ export default function Admin() {
             <TabsTrigger value="transactions" data-testid="tab-transactions">
               <DollarSign className="h-4 w-4 mr-2" />
               Transactions
+            </TabsTrigger>
+            <TabsTrigger value="positions" data-testid="tab-positions">
+              <ArrowLeftRight className="h-4 w-4 mr-2" />
+              Positions ({openPositions})
             </TabsTrigger>
           </TabsList>
 
@@ -357,6 +386,112 @@ export default function Admin() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Positions Tab */}
+          <TabsContent value="positions" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <CardTitle className="font-display text-2xl">Arbitrage Positions</CardTitle>
+                  <Button
+                    onClick={() => setCreatePositionDialogOpen(true)}
+                    data-testid="button-create-position"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Position
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Asset</TableHead>
+                        <TableHead>Exchanges</TableHead>
+                        <TableHead className="text-right">Entry Price</TableHead>
+                        <TableHead className="text-right">Exit Price</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Notional</TableHead>
+                        <TableHead className="text-right">P&L</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Opened</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {positions?.map((pos: any) => (
+                        <TableRow key={pos.id} data-testid={`row-position-${pos.id}`}>
+                          <TableCell className="font-medium">{pos.userEmail}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{pos.assetSymbol}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {pos.entryExchange} → {pos.exitExchange}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            ${pos.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            ${pos.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {pos.quantity.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 })}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-semibold">
+                            ${pos.notionalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="space-y-1">
+                              <div className={`font-semibold tabular-nums ${pos.finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {pos.finalPnlUsd >= 0 ? '+' : ''}${pos.finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                              <div className={`text-xs tabular-nums ${pos.finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ({pos.finalPnlPercent >= 0 ? '+' : ''}{pos.finalPnlPercent.toFixed(2)}%)
+                              </div>
+                              {pos.overridePnlUsd !== null && (
+                                <Badge variant="outline" className="text-xs">
+                                  Override
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={pos.status === "open" ? "default" : "secondary"}>
+                              {pos.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(pos.openedAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {pos.status === "open" && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleOpenCloseDialog(pos)}
+                                data-testid={`button-close-${pos.id}`}
+                              >
+                                Close
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {positions?.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                            No positions found. Create one to get started.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -364,6 +499,17 @@ export default function Admin() {
         open={adjustDialogOpen}
         onOpenChange={setAdjustDialogOpen}
         user={selectedUser}
+      />
+
+      <CreatePositionDialog
+        open={createPositionDialogOpen}
+        onOpenChange={setCreatePositionDialogOpen}
+      />
+
+      <ClosePositionDialog
+        open={closePositionDialogOpen}
+        onOpenChange={setClosePositionDialogOpen}
+        position={selectedPosition}
       />
     </div>
   );

@@ -150,24 +150,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const wallet = await storage.getWalletByUserId(req.userId!);
       const positions = await storage.getPortfolioPositions(req.userId!);
+      const arbitragePositions = await storage.getArbitragePositionsByUserId(req.userId!);
 
-      // Calculate realized and unrealized P/L
+      // Calculate realized P/L from portfolio positions
       const realizedPL = positions.reduce((sum, pos) => sum + pos.profitLossUsd, 0);
+      
+      // Calculate unrealized P/L from portfolio positions
       const unrealizedPL = positions
         .filter(pos => pos.profitLossUsd > 0)
         .reduce((sum, pos) => sum + pos.profitLossUsd, 0);
 
+      // Calculate realized P/L from closed arbitrage positions
+      const arbitrageRealizedPL = arbitragePositions
+        .filter(pos => pos.status === "closed" && pos.finalPnlUsd !== null)
+        .reduce((sum, pos) => sum + pos.finalPnlUsd!, 0);
+
       res.json({
         totalBalance: wallet?.totalBalanceUsd || 0,
         availableBalance: wallet?.availableBalanceUsd || 0,
-        realizedPL,
-        unrealizedPL,
+        realizedPL: realizedPL + arbitrageRealizedPL,
+        unrealizedPL, // Note: Unrealized P/L for arbitrage positions requires current market price
         activePositions: positions.length,
         positions,
+        arbitragePositions: arbitragePositions.length,
+        openArbitragePositions: arbitragePositions.filter(pos => pos.status === "open").length,
       });
     } catch (error) {
       console.error("Dashboard error:", error);
       res.status(500).json({ error: "Failed to get dashboard data" });
+    }
+  });
+
+  // Get user's arbitrage positions
+  app.get("/api/positions", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const positions = await storage.getArbitragePositionsByUserId(req.userId!);
+      res.json(positions);
+    } catch (error) {
+      console.error("Get positions error:", error);
+      res.status(500).json({ error: "Failed to get positions" });
+    }
+  });
+
+  // Get specific position
+  app.get("/api/positions/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const positionId = parseInt(req.params.id);
+      const position = await storage.getArbitragePositionById(positionId);
+
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
+
+      // Ensure user owns this position
+      if (position.userId !== req.userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      res.json(position);
+    } catch (error) {
+      console.error("Get position error:", error);
+      res.status(500).json({ error: "Failed to get position" });
     }
   });
 
@@ -447,6 +490,244 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Adjust balance error:", error);
       res.status(500).json({ error: "Failed to adjust balance" });
+    }
+  });
+
+  // ============ Arbitrage Positions (Admin) ============
+
+  // Create arbitrage position for a user
+  app.post("/api/admin/positions/create", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const {
+        userId,
+        assetSymbol,
+        entryExchange,
+        exitExchange,
+        entryPrice,
+        quantity,
+        details
+      } = req.body;
+
+      // Validate inputs
+      if (!userId || !assetSymbol || !entryExchange || !exitExchange) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      if (!entryPrice || !quantity || entryPrice <= 0 || quantity <= 0) {
+        return res.status(400).json({ error: "Invalid price or quantity" });
+      }
+
+      // Calculate notional value
+      const notionalValueUsd = entryPrice * quantity;
+
+      // Create position - all PnL fields are null until closed
+      const position = await storage.createArbitragePosition({
+        userId,
+        assetSymbol: assetSymbol.toUpperCase(),
+        entryExchange,
+        exitExchange,
+        entryPrice,
+        exitPrice: null, // Will be set when closed
+        quantity,
+        notionalValueUsd,
+        rawPnlUsd: null, // Calculated when closed
+        rawPnlPercent: null, // Calculated when closed
+        overridePnlUsd: null,
+        overridePnlPercent: null,
+        finalPnlUsd: null, // Calculated when closed
+        finalPnlPercent: null, // Calculated when closed
+        status: "open",
+        details: details || null,
+      });
+
+      console.log(`✅ Position created for user ${userId}: ${assetSymbol} ${entryExchange}→${exitExchange}`);
+
+      // Notify admins via WebSocket
+      wsManager.emitToAdmins("admin_positions_update", {
+        type: "position_created",
+        userId,
+        position,
+      });
+
+      res.json(position);
+    } catch (error: any) {
+      console.error("Create position error:", error);
+      res.status(500).json({ error: error.message || "Failed to create position" });
+    }
+  });
+
+  // Get all arbitrage positions (admin only)
+  app.get("/api/admin/positions", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const positions = await storage.getAllArbitragePositions();
+      
+      // Add user email to each position
+      const positionsWithEmail = await Promise.all(
+        positions.map(async (position) => {
+          const user = await storage.getUserById(position.userId);
+          return {
+            ...position,
+            userEmail: user?.email || "Unknown",
+          };
+        })
+      );
+
+      res.json(positionsWithEmail);
+    } catch (error) {
+      console.error("Get positions error:", error);
+      res.status(500).json({ error: "Failed to get positions" });
+    }
+  });
+
+  // Close arbitrage position
+  app.post("/api/admin/positions/:id/close", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const positionId = parseInt(req.params.id);
+      const { exitPrice, overridePnlUsd } = req.body;
+      
+      const position = await storage.getArbitragePositionById(positionId);
+
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
+
+      if (position.status !== "open") {
+        return res.status(400).json({ error: "Position is not open" });
+      }
+
+      if (!exitPrice || exitPrice <= 0) {
+        return res.status(400).json({ error: "Exit price is required to close position" });
+      }
+
+      // Calculate raw PnL (immutable - only calculated once at close)
+      const rawPnlUsd = (exitPrice - position.entryPrice) * position.quantity;
+      
+      // Guard against divide by zero for percent calculations
+      if (position.entryPrice === 0) {
+        return res.status(400).json({ error: "Cannot calculate P&L percent: entry price is zero" });
+      }
+      if (position.notionalValueUsd === 0) {
+        return res.status(400).json({ error: "Cannot calculate P&L percent: notional value is zero" });
+      }
+      
+      const rawPnlPercent = ((exitPrice - position.entryPrice) / position.entryPrice) * 100;
+
+      // Calculate final PnL (use override if provided, otherwise use raw)
+      let finalPnlUsd: number;
+      let finalPnlPercent: number;
+      let overridePnlPercent: number | null = null;
+
+      if (overridePnlUsd !== undefined && overridePnlUsd !== null) {
+        // Override provided - use it
+        finalPnlUsd = overridePnlUsd;
+        finalPnlPercent = (overridePnlUsd / position.notionalValueUsd) * 100;
+        overridePnlPercent = finalPnlPercent;
+      } else {
+        // No override - use raw PnL
+        finalPnlUsd = rawPnlUsd;
+        finalPnlPercent = rawPnlPercent;
+      }
+
+      // Update position with exit price and PnL values
+      await storage.updateArbitragePosition(positionId, {
+        exitPrice,
+        rawPnlUsd,
+        rawPnlPercent,
+        overridePnlUsd: overridePnlUsd !== undefined && overridePnlUsd !== null ? overridePnlUsd : null,
+        overridePnlPercent,
+        finalPnlUsd,
+        finalPnlPercent,
+      });
+
+      // Close the position
+      await storage.closeArbitragePosition(positionId);
+
+      // Update user balance with final PnL
+      const wallet = await storage.getWalletByUserId(position.userId);
+      if (wallet) {
+        const newTotal = wallet.totalBalanceUsd + finalPnlUsd;
+        const newAvailable = wallet.availableBalanceUsd + finalPnlUsd;
+        await storage.updateWalletBalance(position.userId, newTotal, newAvailable);
+      }
+
+      // Create transaction record
+      await storage.createTransaction({
+        userId: position.userId,
+        type: "trade",
+        amountUsd: finalPnlUsd,
+        destinationAddress: null,
+      });
+
+      console.log(`✅ Position closed for user ${position.userId}: ${finalPnlUsd >= 0 ? 'profit' : 'loss'} $${finalPnlUsd}`);
+
+      // Notify user via WebSocket
+      wsManager.emitToUser(position.userId, "position_closed", {
+        positionId: position.id,
+        assetSymbol: position.assetSymbol,
+        entryExchange: position.entryExchange,
+        exitExchange: position.exitExchange,
+        finalPnlUsd,
+        finalPnlPercent,
+        status: "closed",
+        message: finalPnlUsd >= 0 
+          ? "Order has been Closed in Profit" 
+          : "Order has been Closed in Loss",
+        newBalance: wallet ? wallet.totalBalanceUsd + finalPnlUsd : 0,
+      });
+
+      // Notify admins via WebSocket
+      const user = await storage.getUserById(position.userId);
+      wsManager.emitToAdmins("admin_positions_update", {
+        type: "position_closed",
+        userId: position.userId,
+        userEmail: user?.email,
+        position: {
+          ...position,
+          exitPrice,
+          rawPnlUsd,
+          rawPnlPercent,
+          finalPnlUsd,
+          finalPnlPercent,
+          status: "closed",
+        },
+        newBalance: wallet ? wallet.totalBalanceUsd + finalPnlUsd : 0,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Close position error:", error);
+      res.status(500).json({ error: "Failed to close position" });
+    }
+  });
+
+  // Helper: Get current crypto prices for admin
+  app.get("/api/admin/prices/current", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const symbols = ["bitcoin", "ethereum", "solana", "cardano", "ripple"];
+      
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${symbols.join(",")}&vs_currencies=usd`
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch prices from CoinGecko");
+      }
+
+      const data = await response.json();
+      
+      // Map to friendly symbols
+      const prices: Record<string, number> = {
+        BTC: data.bitcoin?.usd || 0,
+        ETH: data.ethereum?.usd || 0,
+        SOL: data.solana?.usd || 0,
+        ADA: data.cardano?.usd || 0,
+        XRP: data.ripple?.usd || 0,
+      };
+
+      res.json(prices);
+    } catch (error) {
+      console.error("Get current prices error:", error);
+      res.status(500).json({ error: "Failed to get prices" });
     }
   });
 

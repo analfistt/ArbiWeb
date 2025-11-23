@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface DepositDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean);
+  onOpenChange: (open: boolean) => void;
 }
 
 interface DepositData {

@@ -58,6 +58,28 @@ export const adminAdjustments = sqliteTable("admin_adjustments", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const arbitragePositions = sqliteTable("arbitrage_positions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  assetSymbol: text("asset_symbol").notNull(), // SOL, BTC, ETH, etc.
+  entryExchange: text("entry_exchange").notNull(), // Kraken, Binance, etc.
+  exitExchange: text("exit_exchange").notNull(),
+  entryPrice: real("entry_price").notNull(), // USD
+  exitPrice: real("exit_price"), // USD - nullable until closed
+  quantity: real("quantity").notNull(),
+  notionalValueUsd: real("notional_value_usd").notNull(), // entry_price * quantity
+  rawPnlUsd: real("raw_pnl_usd"), // (exit_price - entry_price) * quantity - calculated at close
+  rawPnlPercent: real("raw_pnl_percent"), // calculated at close
+  overridePnlUsd: real("override_pnl_usd"), // Admin can set any value
+  overridePnlPercent: real("override_pnl_percent"),
+  finalPnlUsd: real("final_pnl_usd"), // Used in UI (override if present, else raw)
+  finalPnlPercent: real("final_pnl_percent"),
+  status: text("status").notNull().default("open"), // open, closed
+  details: text("details"), // Optional JSON or notes
+  openedAt: integer("opened_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  closedAt: integer("closed_at", { mode: "timestamp" }),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -93,6 +115,12 @@ export const insertAdminAdjustmentSchema = createInsertSchema(adminAdjustments).
   createdAt: true,
 });
 
+export const insertArbitragePositionSchema = createInsertSchema(arbitragePositions).omit({
+  id: true,
+  openedAt: true,
+  closedAt: true,
+});
+
 // Select types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -104,3 +132,5 @@ export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type AdminAdjustment = typeof adminAdjustments.$inferSelect;
 export type InsertAdminAdjustment = z.infer<typeof insertAdminAdjustmentSchema>;
+export type ArbitragePosition = typeof arbitragePositions.$inferSelect;
+export type InsertArbitragePosition = z.infer<typeof insertArbitragePositionSchema>;

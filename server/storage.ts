@@ -5,7 +5,8 @@ import type {
   Wallet, InsertWallet,
   PortfolioPosition, InsertPortfolioPosition,
   Transaction, InsertTransaction,
-  AdminAdjustment, InsertAdminAdjustment
+  AdminAdjustment, InsertAdminAdjustment,
+  ArbitragePosition, InsertArbitragePosition
 } from "@shared/schema";
 
 const db = new Database("database.db");
@@ -69,6 +70,29 @@ db.exec(`
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS arbitrage_positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    asset_symbol TEXT NOT NULL,
+    entry_exchange TEXT NOT NULL,
+    exit_exchange TEXT NOT NULL,
+    entry_price REAL NOT NULL,
+    exit_price REAL,
+    quantity REAL NOT NULL,
+    notional_value_usd REAL NOT NULL,
+    raw_pnl_usd REAL,
+    raw_pnl_percent REAL,
+    override_pnl_usd REAL,
+    override_pnl_percent REAL,
+    final_pnl_usd REAL,
+    final_pnl_percent REAL,
+    status TEXT NOT NULL DEFAULT 'open',
+    details TEXT,
+    opened_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    closed_at INTEGER,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
 `);
 
 // Seed admin account if it doesn't exist
@@ -116,6 +140,14 @@ export interface IStorage {
   // Admin methods
   createAdminAdjustment(adjustment: InsertAdminAdjustment): Promise<AdminAdjustment>;
   getAdminAdjustmentsByUserId(userId: number): Promise<AdminAdjustment[]>;
+
+  // Arbitrage Position methods
+  createArbitragePosition(position: InsertArbitragePosition): Promise<ArbitragePosition>;
+  getArbitragePositionById(id: number): Promise<ArbitragePosition | undefined>;
+  getArbitragePositionsByUserId(userId: number): Promise<ArbitragePosition[]>;
+  getAllArbitragePositions(): Promise<ArbitragePosition[]>;
+  closeArbitragePosition(id: number): Promise<void>;
+  updateArbitragePosition(id: number, updates: Partial<ArbitragePosition>): Promise<void>;
 }
 
 export class SQLiteStorage implements IStorage {
@@ -392,6 +424,135 @@ export class SQLiteStorage implements IStorage {
       note: adj.note,
       createdAt: new Date(adj.created_at * 1000),
     }));
+  }
+
+  // Arbitrage Position methods
+  async createArbitragePosition(position: InsertArbitragePosition): Promise<ArbitragePosition> {
+    const stmt = db.prepare(`
+      INSERT INTO arbitrage_positions (
+        user_id, asset_symbol, entry_exchange, exit_exchange,
+        entry_price, exit_price, quantity, notional_value_usd,
+        raw_pnl_usd, raw_pnl_percent, override_pnl_usd, override_pnl_percent,
+        final_pnl_usd, final_pnl_percent, status, details
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(
+      position.userId,
+      position.assetSymbol,
+      position.entryExchange,
+      position.exitExchange,
+      position.entryPrice,
+      position.exitPrice,
+      position.quantity,
+      position.notionalValueUsd,
+      position.rawPnlUsd,
+      position.rawPnlPercent,
+      position.overridePnlUsd || null,
+      position.overridePnlPercent || null,
+      position.finalPnlUsd,
+      position.finalPnlPercent,
+      position.status,
+      position.details || null
+    );
+
+    const pos = db.prepare("SELECT * FROM arbitrage_positions WHERE id = ?").get(result.lastInsertRowid) as any;
+    return this.mapArbitragePosition(pos);
+  }
+
+  async getArbitragePositionById(id: number): Promise<ArbitragePosition | undefined> {
+    const pos = db.prepare("SELECT * FROM arbitrage_positions WHERE id = ?").get(id) as any;
+    if (!pos) return undefined;
+    return this.mapArbitragePosition(pos);
+  }
+
+  async getArbitragePositionsByUserId(userId: number): Promise<ArbitragePosition[]> {
+    const positions = db.prepare("SELECT * FROM arbitrage_positions WHERE user_id = ? ORDER BY opened_at DESC").all(userId) as any[];
+    return positions.map(pos => this.mapArbitragePosition(pos));
+  }
+
+  async getAllArbitragePositions(): Promise<ArbitragePosition[]> {
+    const positions = db.prepare("SELECT * FROM arbitrage_positions ORDER BY opened_at DESC").all() as any[];
+    return positions.map(pos => this.mapArbitragePosition(pos));
+  }
+
+  async closeArbitragePosition(id: number): Promise<void> {
+    db.prepare(`
+      UPDATE arbitrage_positions 
+      SET status = 'closed', closed_at = unixepoch()
+      WHERE id = ?
+    `).run(id);
+  }
+
+  async updateArbitragePosition(id: number, updates: Partial<ArbitragePosition>): Promise<void> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.exitPrice !== undefined) {
+      fields.push("exit_price = ?");
+      values.push(updates.exitPrice);
+    }
+    if (updates.rawPnlUsd !== undefined) {
+      fields.push("raw_pnl_usd = ?");
+      values.push(updates.rawPnlUsd);
+    }
+    if (updates.rawPnlPercent !== undefined) {
+      fields.push("raw_pnl_percent = ?");
+      values.push(updates.rawPnlPercent);
+    }
+    if (updates.overridePnlUsd !== undefined) {
+      fields.push("override_pnl_usd = ?");
+      values.push(updates.overridePnlUsd);
+    }
+    if (updates.overridePnlPercent !== undefined) {
+      fields.push("override_pnl_percent = ?");
+      values.push(updates.overridePnlPercent);
+    }
+    if (updates.finalPnlUsd !== undefined) {
+      fields.push("final_pnl_usd = ?");
+      values.push(updates.finalPnlUsd);
+    }
+    if (updates.finalPnlPercent !== undefined) {
+      fields.push("final_pnl_percent = ?");
+      values.push(updates.finalPnlPercent);
+    }
+    if (updates.status !== undefined) {
+      fields.push("status = ?");
+      values.push(updates.status);
+    }
+    if (updates.closedAt !== undefined) {
+      fields.push("closed_at = ?");
+      values.push(Math.floor(updates.closedAt.getTime() / 1000));
+    }
+
+    if (fields.length > 0) {
+      values.push(id);
+      db.prepare(`UPDATE arbitrage_positions SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+    }
+  }
+
+  private mapArbitragePosition(pos: any): ArbitragePosition {
+    return {
+      id: pos.id,
+      userId: pos.user_id,
+      assetSymbol: pos.asset_symbol,
+      entryExchange: pos.entry_exchange,
+      exitExchange: pos.exit_exchange,
+      entryPrice: pos.entry_price,
+      exitPrice: pos.exit_price,
+      quantity: pos.quantity,
+      notionalValueUsd: pos.notional_value_usd,
+      rawPnlUsd: pos.raw_pnl_usd,
+      rawPnlPercent: pos.raw_pnl_percent,
+      overridePnlUsd: pos.override_pnl_usd,
+      overridePnlPercent: pos.override_pnl_percent,
+      finalPnlUsd: pos.final_pnl_usd,
+      finalPnlPercent: pos.final_pnl_percent,
+      status: pos.status,
+      details: pos.details,
+      openedAt: new Date(pos.opened_at * 1000),
+      closedAt: pos.closed_at ? new Date(pos.closed_at * 1000) : null,
+    };
   }
 }
 
