@@ -5,8 +5,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { insertUserSchema, insertTransactionSchema, insertAdminAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
+import config from "./config";
+import { nowPaymentsService } from "./services/nowpayments";
+import { wsManager } from "./websocket";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const JWT_SECRET = config.jwtSecret;
 
 // Middleware to verify JWT token
 interface AuthRequest extends Request {
@@ -447,59 +450,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============ NowPayments Integration ============
+  // ============ NOWPayments Integration ============
   
-  // Create deposit payment (scaffolded for NowPayments)
-  app.post("/api/deposit/create", authMiddleware, async (req: AuthRequest, res) => {
+  // Create deposit payment
+  app.post("/api/deposits/create", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const { amountUsd, payCurrency } = req.body;
 
-      // This is where you would integrate with NowPayments API
-      // For now, return a mock payment address
-      const mockPaymentData = {
-        paymentId: `payment_${Date.now()}`,
-        payAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-        payAmount: amountUsd / 43000, // Mock BTC amount
-        payCurrency,
+      if (!amountUsd || amountUsd <= 0) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+
+      const validCurrencies = ["usdt", "btc", "eth", "usdc"];
+      if (!payCurrency || !validCurrencies.includes(payCurrency.toLowerCase())) {
+        return res.status(400).json({ error: "Invalid currency. Must be one of: USDT, BTC, ETH, USDC" });
+      }
+
+      // Generate unique order ID
+      const orderId = `deposit_${req.userId}_${Date.now()}`;
+
+      // Create payment with NOWPayments
+      const paymentData = await nowPaymentsService.createPayment({
         priceAmount: amountUsd,
         priceCurrency: "usd",
-        status: "waiting",
-      };
+        payCurrency: payCurrency.toLowerCase(),
+        orderId,
+        ipnCallbackUrl: `${config.appBaseUrl}/api/nowpayments/ipn`,
+        orderDescription: `Deposit ${amountUsd} USD`,
+      });
 
-      // Create pending deposit transaction
-      await storage.createTransaction({
+      // Save transaction to database
+      const transaction = await storage.createTransaction({
         userId: req.userId!,
         type: "deposit",
         amountUsd,
-        destinationAddress: null,
+        destinationAddress: paymentData.pay_address,
+        cryptoCurrency: payCurrency.toUpperCase(),
+        cryptoAmount: paymentData.pay_amount,
+        paymentProvider: "nowpayments",
+        paymentId: paymentData.payment_id,
+        orderId,
       });
 
-      res.json(mockPaymentData);
-    } catch (error) {
+      console.log(`✅ Deposit created for user ${req.userId}: ${paymentData.payment_id}`);
+
+      // Return payment details to frontend
+      res.json({
+        transactionId: transaction.id,
+        paymentId: paymentData.payment_id,
+        payAddress: paymentData.pay_address,
+        payAmount: paymentData.pay_amount,
+        payCurrency: paymentData.pay_currency.toUpperCase(),
+        priceAmount: paymentData.price_amount,
+        priceCurrency: paymentData.price_currency.toUpperCase(),
+        status: paymentData.payment_status,
+        orderId: paymentData.order_id,
+        network: paymentData.network,
+        timeLimit: paymentData.time_limit,
+      });
+    } catch (error: any) {
       console.error("Create deposit error:", error);
-      res.status(500).json({ error: "Failed to create deposit" });
+      res.status(500).json({ error: error.message || "Failed to create deposit" });
     }
   });
 
-  // NowPayments IPN callback (webhook endpoint)
+  // NOWPayments IPN callback (webhook endpoint)
   app.post("/api/nowpayments/ipn", async (req, res) => {
     try {
-      // In production, verify the IPN signature here
-      const payment = req.body;
+      const signature = req.headers["x-nowpayments-sig"] as string;
+      const rawBody = JSON.stringify(req.body);
 
-      if (payment.payment_status === "finished") {
-        // Find the transaction and update user balance
-        // This is simplified - in production you'd match by payment_id
-        console.log("Payment received:", payment);
+      // Verify IPN signature
+      if (!nowPaymentsService.verifyIPN(rawBody, signature)) {
+        console.error("❌ Invalid IPN signature");
+        return res.status(403).json({ error: "Invalid signature" });
+      }
+
+      const ipnData = req.body;
+      console.log("📥 IPN received:", ipnData);
+
+      // Find the transaction by payment_id or order_id
+      let transaction = await storage.getTransactionByPaymentId(ipnData.payment_id);
+      
+      if (!transaction && ipnData.order_id) {
+        transaction = await storage.getTransactionByOrderId(ipnData.order_id);
+      }
+
+      if (!transaction) {
+        console.error("❌ Transaction not found for payment:", ipnData.payment_id);
+        return res.sendStatus(404);
+      }
+
+      // Update transaction with IPN data
+      await storage.updateTransactionWithIpnData(transaction.id, {
+        status: ipnData.payment_status === "finished" ? "completed" :
+                ipnData.payment_status === "failed" ? "rejected" : "pending",
+        txHashOrReference: ipnData.payment_id,
+        cryptoAmount: ipnData.actually_paid || ipnData.pay_amount,
+        rawIpnData: JSON.stringify(ipnData),
+      });
+
+      // If payment is completed, credit user's balance
+      if (ipnData.payment_status === "finished") {
+        const wallet = await storage.getWalletByUserId(transaction.userId);
+        if (wallet) {
+          const newTotal = wallet.totalBalanceUsd + transaction.amountUsd;
+          const newAvailable = wallet.availableBalanceUsd + transaction.amountUsd;
+          
+          await storage.updateWalletBalance(transaction.userId, newTotal, newAvailable);
+          
+          console.log(`✅ Deposit completed for user ${transaction.userId}: +$${transaction.amountUsd}`);
+          
+          // Emit WebSocket events for real-time updates
+          wsManager.emitDepositUpdate(transaction, newTotal);
+        }
+      } else if (ipnData.payment_status === "failed") {
+        console.log(`❌ Deposit failed for user ${transaction.userId}: ${ipnData.payment_id}`);
       }
 
       res.sendStatus(200);
     } catch (error) {
-      console.error("IPN error:", error);
+      console.error("❌ IPN processing error:", error);
       res.sendStatus(500);
     }
   });
 
   const httpServer = createServer(app);
+  
+  // Initialize WebSocket server
+  wsManager.initialize(httpServer);
+  
   return httpServer;
 }
