@@ -67,6 +67,9 @@ export default function Admin() {
   // Approve withdrawal mutation
   const approveMutation = useMutation({
     mutationFn: async (transactionId: number) => {
+      if (!transactionId) {
+        throw new Error("Transaction ID is required");
+      }
       await apiRequest("POST", `/api/admin/transactions/${transactionId}/approve`, {}, token || "");
     },
     onSuccess: () => {
@@ -88,6 +91,9 @@ export default function Admin() {
   // Reject withdrawal mutation
   const rejectMutation = useMutation({
     mutationFn: async (transactionId: number) => {
+      if (!transactionId) {
+        throw new Error("Transaction ID is required");
+      }
       await apiRequest("POST", `/api/admin/transactions/${transactionId}/reject`, {}, token || "");
     },
     onSuccess: () => {
@@ -124,7 +130,7 @@ export default function Admin() {
     tx.type === "withdrawal" && tx.status === "pending"
   ).length || 0;
 
-  const totalPlatformBalance = users?.reduce((sum: number, u: any) => sum + u.balance, 0) || 0;
+  const totalPlatformBalance = users?.reduce((sum: number, u: any) => sum + (u.balance ?? 0), 0) || 0;
 
   const openPositions = positions?.filter((pos: any) => pos.status === "open").length || 0;
 
@@ -266,37 +272,43 @@ export default function Admin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.map((user: any) => (
-                        <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                          <TableCell className="font-medium">{user.email}</TableCell>
-                          <TableCell className="text-right tabular-nums font-semibold">
-                            ${user.balance.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            <span className={user.realizedPL >= 0 ? "text-green-600" : "text-red-600"}>
-                              {user.realizedPL >= 0 ? "+" : ""}${user.realizedPL.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            <span className={user.unrealizedPL >= 0 ? "text-green-600" : "text-red-600"}>
-                              {user.unrealizedPL >= 0 ? "+" : ""}${user.unrealizedPL.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="default">{user.status}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAdjustBalance(user)}
-                              data-testid={`button-adjust-${user.id}`}
-                            >
-                              Adjust Balance
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredUsers.map((user: any) => {
+                        const balance = user.balance ?? 0;
+                        const realizedPL = user.realizedPL ?? 0;
+                        const unrealizedPL = user.unrealizedPL ?? 0;
+                        
+                        return (
+                          <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
+                            <TableCell className="font-medium">{user.email || '-'}</TableCell>
+                            <TableCell className="text-right tabular-nums font-semibold">
+                              ${balance.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              <span className={realizedPL >= 0 ? "text-green-600" : "text-red-600"}>
+                                {realizedPL >= 0 ? "+" : ""}${realizedPL.toLocaleString()}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              <span className={unrealizedPL >= 0 ? "text-green-600" : "text-red-600"}>
+                                {unrealizedPL >= 0 ? "+" : ""}${unrealizedPL.toLocaleString()}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="default">{user.status || 'active'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAdjustBalance(user)}
+                                data-testid={`button-adjust-${user.id}`}
+                              >
+                                Adjust Balance
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -325,40 +337,48 @@ export default function Admin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transactions?.map((tx: any) => (
-                        <TableRow key={tx.id} data-testid={`row-transaction-${tx.id}`}>
-                          <TableCell className="font-medium">{tx.email}</TableCell>
-                          <TableCell>
-                            <Badge variant={tx.type === "deposit" ? "default" : "secondary"}>
-                              {tx.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums font-semibold">
-                            ${tx.amountUsd.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={
-                                tx.status === "completed" ? "default" :
-                                tx.status === "pending" ? "secondary" : "destructive"
-                              }
-                            >
-                              {tx.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {tx.destinationAddress || "-"}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(tx.createdAt).toLocaleDateString()}
-                          </TableCell>
+                      {transactions?.map((tx: any) => {
+                        const amountUsd = tx.amountUsd ?? 0;
+                        const createdAt = tx.createdAt ? new Date(tx.createdAt) : null;
+                        
+                        return (
+                          <TableRow key={tx.id} data-testid={`row-transaction-${tx.id}`}>
+                            <TableCell className="font-medium">{tx.email || '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant={tx.type === "deposit" ? "default" : "secondary"}>
+                                {tx.type || '-'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums font-semibold">
+                              ${amountUsd.toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  tx.status === "completed" ? "default" :
+                                  tx.status === "pending" ? "secondary" : "destructive"
+                                }
+                              >
+                                {tx.status || 'unknown'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {tx.destinationAddress || "-"}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {createdAt ? createdAt.toLocaleDateString() : '-'}
+                            </TableCell>
                           <TableCell className="text-right">
-                            {tx.type === "withdrawal" && tx.status === "pending" && (
+                            {tx.type === "withdrawal" && tx.status === "pending" && tx.id && (
                               <div className="flex gap-2 justify-end">
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  onClick={() => approveMutation.mutate(tx.id)}
+                                  onClick={() => {
+                                    if (tx.id) {
+                                      approveMutation.mutate(tx.id);
+                                    }
+                                  }}
                                   disabled={approveMutation.isPending}
                                   data-testid={`button-approve-${tx.id}`}
                                 >
@@ -368,7 +388,11 @@ export default function Admin() {
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={() => rejectMutation.mutate(tx.id)}
+                                  onClick={() => {
+                                    if (tx.id) {
+                                      rejectMutation.mutate(tx.id);
+                                    }
+                                  }}
                                   disabled={rejectMutation.isPending}
                                   data-testid={`button-reject-${tx.id}`}
                                 >
@@ -379,7 +403,8 @@ export default function Admin() {
                             )}
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -421,7 +446,13 @@ export default function Admin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {positions?.map((pos: any) => (
+                      {positions?.map((pos: any) => {
+                        const entryPrice = Number(pos.entryPrice) || 0;
+                        const quantity = Number(pos.quantity) || 0;
+                        const notionalValueUsd = Number(pos.notionalValueUsd) || 0;
+                        const finalPnlPercent = Number(pos.finalPnlPercent) || 0;
+                        
+                        return (
                         <TableRow key={pos.id} data-testid={`row-position-${pos.id}`}>
                           <TableCell className="font-medium">{pos.userEmail}</TableCell>
                           <TableCell>
@@ -431,27 +462,27 @@ export default function Admin() {
                             {pos.entryExchange} → {pos.exitExchange}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            ${pos.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {pos.exitPrice !== null 
-                              ? `$${pos.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              ? `$${Number(pos.exitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                               : "-"}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {pos.quantity.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 })}
+                            {quantity.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 })}
                           </TableCell>
                           <TableCell className="text-right tabular-nums font-semibold">
-                            ${pos.notionalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${notionalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right">
                             {pos.finalPnlUsd !== null ? (
                               <div className="space-y-1">
                                 <div className={`font-semibold tabular-nums ${pos.finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {pos.finalPnlUsd >= 0 ? '+' : ''}${pos.finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {pos.finalPnlUsd >= 0 ? '+' : ''}${Number(pos.finalPnlUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
-                                <div className={`text-xs tabular-nums ${pos.finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  ({pos.finalPnlPercent >= 0 ? '+' : ''}{pos.finalPnlPercent.toFixed(2)}%)
+                                <div className={`text-xs tabular-nums ${finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ({finalPnlPercent >= 0 ? '+' : ''}{finalPnlPercent.toFixed(2)}%)
                                 </div>
                                 {pos.overridePnlUsd !== null && (
                                   <Badge variant="outline" className="text-xs">
@@ -484,7 +515,8 @@ export default function Admin() {
                             )}
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                       {positions?.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={11} className="text-center text-muted-foreground py-8">

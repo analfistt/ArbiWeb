@@ -100,7 +100,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, user }: AdjustBalanceD
           <div className="p-3 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">Current Balance</p>
             <p className="text-2xl font-display font-bold tabular-nums">
-              ${user.balance?.toLocaleString()}
+              ${(user.balance ?? 0).toLocaleString()}
             </p>
           </div>
           <div className="space-y-2">
@@ -133,7 +133,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, user }: AdjustBalanceD
             <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-blue-900 dark:text-blue-100">
                 New balance will be: <strong className="font-display tabular-nums">
-                  ${(user.balance + parseFloat(amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${((user.balance ?? 0) + parseFloat(amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </strong>
               </p>
             </div>

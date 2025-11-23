@@ -83,19 +83,27 @@ export default function Dashboard() {
           try {
             const message = JSON.parse(event.data);
             
-            if (message.event === 'position_closed' && message.data) {
+            if (message.event === 'position_closed' && message?.data) {
               // Refresh positions and dashboard data
               queryClient.invalidateQueries({ queryKey: ["/api/positions"] });
               queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
               
               // Show toast notification with safe data access
-              const finalPnlUsd = message.data.finalPnlUsd ?? 0;
-              const finalPnlPercent = message.data.finalPnlPercent ?? 0;
+              const data = message.data || {};
+              const finalPnlUsd = Number(data.finalPnlUsd) || 0;
+              const finalPnlPercent = Number(data.finalPnlPercent) || 0;
               const isProfitable = finalPnlUsd >= 0;
+              const assetSymbol = String(data.assetSymbol || '');
+              const entryExchange = String(data.entryExchange || '');
+              const exitExchange = String(data.exitExchange || '');
+              const messageText = String(data.message || '');
+              
+              const title = messageText || (isProfitable ? "Position Closed in Profit" : "Position Closed in Loss");
+              const description = `${assetSymbol} ${entryExchange}→${exitExchange}: ${finalPnlUsd >= 0 ? '+' : ''}$${Math.abs(finalPnlUsd).toLocaleString()} (${finalPnlPercent >= 0 ? '+' : ''}${finalPnlPercent.toFixed(2)}%)`;
               
               toast({
-                title: message.data.message || (isProfitable ? "Position Closed in Profit" : "Position Closed in Loss"),
-                description: `${message.data.assetSymbol || ''} ${message.data.entryExchange || ''}→${message.data.exitExchange || ''}: ${finalPnlUsd >= 0 ? '+' : ''}$${finalPnlUsd.toLocaleString()} (${finalPnlPercent >= 0 ? '+' : ''}${finalPnlPercent.toFixed(2)}%)`,
+                title,
+                description,
                 variant: isProfitable ? "default" : "destructive",
               });
             }
@@ -350,11 +358,11 @@ export default function Dashboard() {
                       </TableHeader>
                       <TableBody>
                         {arbitragePositions.map((pos: any) => {
-                          const entryPrice = pos.entryPrice ?? 0;
-                          const exitPrice = pos.exitPrice;
-                          const quantity = pos.quantity ?? 0;
-                          const finalPnlUsd = pos.finalPnlUsd;
-                          const finalPnlPercent = pos.finalPnlPercent;
+                          const entryPrice = Number(pos.entryPrice) || 0;
+                          const exitPrice = pos.exitPrice != null ? Number(pos.exitPrice) : null;
+                          const quantity = Number(pos.quantity) || 0;
+                          const finalPnlUsd = pos.finalPnlUsd != null ? Number(pos.finalPnlUsd) : null;
+                          const finalPnlPercent = Number(pos.finalPnlPercent) || 0;
                           
                           return (
                             <TableRow key={pos.id} data-testid={`row-arb-position-${pos.id}`}>
@@ -368,7 +376,7 @@ export default function Dashboard() {
                                 ${entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </TableCell>
                               <TableCell className="text-right tabular-nums">
-                                {exitPrice !== null 
+                                {exitPrice != null 
                                   ? `$${exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                   : '-'}
                               </TableCell>
@@ -376,7 +384,7 @@ export default function Dashboard() {
                                 {quantity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                               </TableCell>
                               <TableCell className="text-right">
-                                {finalPnlUsd !== null ? (
+                                {finalPnlUsd != null ? (
                                   <div className="space-y-1">
                                     <div className={`font-semibold tabular-nums ${finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                       {finalPnlUsd >= 0 ? (
@@ -386,8 +394,8 @@ export default function Dashboard() {
                                       )}
                                       {finalPnlUsd >= 0 ? '+' : ''}${finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
-                                    <div className={`text-xs tabular-nums ${(finalPnlPercent ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                      ({(finalPnlPercent ?? 0) >= 0 ? '+' : ''}{(finalPnlPercent ?? 0).toFixed(2)}%)
+                                    <div className={`text-xs tabular-nums ${finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ({finalPnlPercent >= 0 ? '+' : ''}{finalPnlPercent.toFixed(2)}%)
                                     </div>
                                   </div>
                                 ) : (

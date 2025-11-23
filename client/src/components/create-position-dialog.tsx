@@ -147,7 +147,7 @@ export function CreatePositionDialog({ open, onOpenChange }: CreatePositionDialo
                     <SelectContent>
                       {users?.map((user: any) => (
                         <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.email} (${user.balance.toLocaleString()})
+                          {user.email} (${ (user.balance ?? 0).toLocaleString()})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -191,7 +191,7 @@ export function CreatePositionDialog({ open, onOpenChange }: CreatePositionDialo
                           <Skeleton className="h-9 w-28" />
                         ) : prices && prices[selectedAsset] ? (
                           <Badge variant="secondary" className="px-3 h-9">
-                            ${prices[selectedAsset].toLocaleString()}
+                            ${(prices[selectedAsset] ?? 0).toLocaleString()}
                           </Badge>
                         ) : null}
                         <Button

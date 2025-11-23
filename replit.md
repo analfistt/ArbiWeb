@@ -89,7 +89,7 @@ Preferred communication style: Simple, everyday language.
 
 **Seeding:**
 - Default admin user created on initialization:
-  - Email: admin@arbitradex.com
+  - Email: admin@site.com
   - Password: Admin123!
   - isAdmin: true
 
