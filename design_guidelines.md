@@ -117,36 +117,65 @@
 - Three-column layout: About + Quick Links + Newsletter signup
 - Social icons, copyright, trust badges
 
-### User Dashboard
+### User Dashboard (Binance-Inspired Trading Interface)
 
-**Layout:**
-- Fixed sidebar navigation (280px) with main content area
-- Dashboard grid: 4 summary cards at top, then 3-column layout for main sections
+**Design System:**
+- **Dark Theme:** Very dark backgrounds (#02040A, #0B1020)
+- **Primary Accent:** Gold/yellow (#F3BA2F) - Binance-style
+- **Profit Color:** Green (#16A34A) with ▲ icon
+- **Loss Color:** Red (#DC2626) with ▼ icon
+- **Typography:** Inter font with clear hierarchy - large bold numbers for balances, small muted labels
 
-**Summary Cards (top row):**
+**Layout Structure:**
+
+**Top Navigation Bar:**
+- Left: App logo "ArbiTradeX" with icon
+- Right: User avatar with dropdown (Profile/Logout), Notification bell icon, Settings gear icon
+- Dark background with subtle border
+
+**Row 1 - Summary KPI Cards (4 cards):**
 - Total Balance, Realized P/L, Unrealized P/L, Active Positions
-- Large number display with trend indicators and percentage changes
+- Binance-style with large numbers (text-3xl) in bright white
+- Small label below in muted gray
+- P/L cards show inline trend icons (up/down arrows with color)
+- Card height ~120px, rounded-2xl, dark card background
+- Subtle icons for each card type (wallet, chart-line, trending-up, etc.)
 
-**Portfolio Section:**
-- Full-width table with columns: Asset | Quantity | Avg Entry | Current Price | Value | P/L USD | P/L %
-- Asset column with icon + symbol
-- P/L columns with badges and arrows
-- Sortable headers
+**Row 2 - Main Content Split:**
+- **Left (60%):** Portfolio/Positions Tabbed Section
+  - Tabs: "Portfolio" and "Arbitrage Positions"
+  - Dark table with alternating row hover highlights
+  - Portfolio tab: Asset | Quantity | Avg Entry | Current Price | Value | P/L USD | P/L %
+  - Positions tab: Route with arrow (Kraken → Binance) | P/L with strong color | Status pill (green for open, gray for closed) | Formatted dates
+  - Color-coded P/L: green with ▲ for profit, red with ▼ for loss
+  
+- **Right (40%):** Live Opportunities Panel
+  - Vertical card list (not table)
+  - Each opportunity card shows: Asset symbol, Spread badge (e.g. "2.40% Spread" in green pill), Buy/Sell lines with prices
+  - Filter bar above: Asset dropdown, Minimum spread dropdown, Symbol search input
+  - Cards with hover elevation, compact rounded design
 
-**Arbitrage Opportunities:**
-- Card-based layout showing spreads
-- Three columns per opportunity: Buy Exchange | Asset | Sell Exchange | Spread %
-- Highlight spreads >2% with accent treatment
+**Row 3 - Charts & Actions:**
+- **Left:** Price Charts with tab switcher (BTC, ETH, SOL, etc.)
+  - Dark chart theme with faint grid lines
+  - Current price and 24h change displayed
+  
+- **Right/Top:** Quick Action Bar
+  - Large primary "Deposit" button (gold accent color)
+  - Secondary outline "Withdraw" button
+  - Rounded corners, slight glow on hover
 
-**Price Charts:**
-- Two-column grid with charts for BTC, ETH
-- Chart.js line charts with minimal styling
-- Time period selector tabs (1H, 24H, 7D, 30D)
+**Micro-interactions:**
+- Card hover: slight scale + shadow
+- Button hover: background + border change with 0.15s transition
+- Table row hover: row highlight
+- All interactions smooth and professional
 
-**Wallet Section:**
-- Balance card with large number display
-- Deposit and Withdraw buttons prominent and equal width
-- Recent transactions list below
+**Responsive:**
+- Mobile: Stack all sections vertically
+- Summary cards: 2x2 grid on mobile
+- Tables: horizontal scroll with sticky headers
+- Filter controls: stack vertically on small screens
 
 ### Admin Back Office
 

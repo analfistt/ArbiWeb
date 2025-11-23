@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownLeft, LogOut, User, ArrowLeftRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownLeft, 
+  LogOut, User, ArrowLeftRight, Bell, Settings, Activity, BarChart3 
+} from "lucide-react";
 import { DepositDialog } from "@/components/deposit-dialog";
 import { WithdrawDialog } from "@/components/withdraw-dialog";
 import { PriceChart } from "@/components/price-chart";
@@ -14,11 +19,90 @@ import { useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// KPI Summary Card Component
+function KPICard({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon, 
+  trend, 
+  testId 
+}: { 
+  title: string; 
+  value: string; 
+  subtitle: string; 
+  icon: any; 
+  trend?: 'up' | 'down' | 'neutral'; 
+  testId?: string; 
+}) {
+  const getTrendColor = () => {
+    if (trend === 'up') return 'text-green-600 dark:text-[hsl(var(--success))]';
+    if (trend === 'down') return 'text-red-600 dark:text-[hsl(var(--destructive))]';
+    return 'text-foreground';
+  };
+
+  return (
+    <Card className="hover-elevate transition-all duration-150">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <div className={`text-3xl font-bold tabular-nums mb-1 ${getTrendColor()}`} data-testid={testId}>
+          {trend && (
+            <>
+              {trend === 'up' && <TrendingUp className="h-5 w-5 inline mr-2" />}
+              {trend === 'down' && <TrendingDown className="h-5 w-5 inline mr-2" />}
+            </>
+          )}
+          {value}
+        </div>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Opportunity Card Component
+function OpportunityCard({ opportunity, index }: { opportunity: any; index: number }) {
+  const spread = Number(opportunity.spread) || 0;
+  const buyPrice = Number(opportunity.buyPrice) || 0;
+  const sellPrice = Number(opportunity.sellPrice) || 0;
+
+  return (
+    <div 
+      className="p-4 border border-border rounded-xl hover-elevate transition-all duration-150" 
+      data-testid={`card-opportunity-${index}`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-bold text-lg">{opportunity.asset || '-'}</span>
+        <Badge className="bg-green-600 dark:bg-[hsl(var(--success))] text-white border-0 px-3">
+          {spread.toFixed(2)}%
+        </Badge>
+      </div>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">Buy {opportunity.buyExchange || '-'}</span>
+          <span className="font-semibold tabular-nums">${buyPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">Sell {opportunity.sellExchange || '-'}</span>
+          <span className="font-semibold tabular-nums">${sellPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { logout, token } = useAuth();
   const { toast } = useToast();
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'portfolio' | 'positions'>('portfolio');
+  const [oppAssetFilter, setOppAssetFilter] = useState<string>('all');
+  const [oppMinSpread, setOppMinSpread] = useState<string>('0');
+  const [oppSearch, setOppSearch] = useState<string>('');
 
   // Fetch dashboard data
   const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
@@ -54,8 +138,43 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("Failed to fetch opportunities");
       return response.json();
     },
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 10000,
   });
+
+  // Client-side opportunity filtering
+  const filteredOpportunities = useMemo(() => {
+    if (!opportunities) return [];
+    
+    let filtered = opportunities;
+    
+    // Asset filter
+    if (oppAssetFilter !== 'all') {
+      filtered = filtered.filter((opp: any) => opp.asset === oppAssetFilter);
+    }
+    
+    // Min spread filter
+    const minSpread = parseFloat(oppMinSpread);
+    filtered = filtered.filter((opp: any) => (Number(opp.spread) || 0) >= minSpread);
+    
+    // Search filter
+    if (oppSearch.trim()) {
+      const searchLower = oppSearch.toLowerCase();
+      filtered = filtered.filter((opp: any) => 
+        (opp.asset || '').toLowerCase().includes(searchLower) ||
+        (opp.buyExchange || '').toLowerCase().includes(searchLower) ||
+        (opp.sellExchange || '').toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return filtered;
+  }, [opportunities, oppAssetFilter, oppMinSpread, oppSearch]);
+
+  // Get unique assets for filter
+  const uniqueAssets = useMemo(() => {
+    if (!opportunities) return [];
+    const assets = new Set(opportunities.map((opp: any) => opp.asset).filter(Boolean));
+    return Array.from(assets) as string[];
+  }, [opportunities]);
 
   // WebSocket integration for live position updates
   useEffect(() => {
@@ -84,11 +203,9 @@ export default function Dashboard() {
             const message = JSON.parse(event.data);
             
             if (message.event === 'position_closed' && message?.data) {
-              // Refresh positions and dashboard data
               queryClient.invalidateQueries({ queryKey: ["/api/positions"] });
               queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
               
-              // Show toast notification with safe data access
               const data = message.data || {};
               const finalPnlUsd = Number(data.finalPnlUsd) || 0;
               const finalPnlPercent = Number(data.finalPnlPercent) || 0;
@@ -114,12 +231,10 @@ export default function Dashboard() {
 
         ws.onerror = (error) => {
           console.error('WebSocket error:', error);
-          // Don't throw - just log the error
         };
 
         ws.onclose = () => {
           console.log('WebSocket disconnected');
-          // Try to reconnect if we haven't exceeded max attempts
           if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             console.log(`Attempting to reconnect WebSocket (${reconnectAttempts}/${maxReconnectAttempts})...`);
@@ -128,7 +243,6 @@ export default function Dashboard() {
         };
       } catch (error) {
         console.error('Failed to initialize WebSocket:', error);
-        // Don't throw - app should work without WebSocket
       }
     };
 
@@ -144,22 +258,17 @@ export default function Dashboard() {
   if (isDashboardLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <nav className="border-b">
-          <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-6 w-6 text-primary" />
-              <span className="font-display font-bold text-xl">ArbiTradeX</span>
-            </div>
+        <nav className="border-b border-border bg-card">
+          <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+            <Skeleton className="h-6 w-32" />
           </div>
         </nav>
-        <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <div className="max-w-[1600px] mx-auto px-6 py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-4 w-24" />
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
+                  <Skeleton className="h-4 w-24 mb-4" />
                   <Skeleton className="h-8 w-32" />
                 </CardContent>
               </Card>
@@ -181,14 +290,20 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <nav className="border-b">
-        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <TrendingUp className="h-6 w-6 text-primary" />
-            <span className="font-display font-bold text-xl">ArbiTradeX</span>
+      {/* Top Navigation Bar - Binance Style */}
+      <nav className="border-b border-border bg-card sticky top-0 z-50">
+        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Activity className="h-6 w-6 text-primary" />
+            <span className="font-bold text-xl">ArbiTradeX</span>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" data-testid="button-notifications">
+              <Bell className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" data-testid="button-settings">
+              <Settings className="h-5 w-5" />
+            </Button>
             <Button variant="ghost" size="icon" data-testid="button-profile">
               <User className="h-5 w-5" />
             </Button>
@@ -199,73 +314,56 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-display font-bold tabular-nums" data-testid="text-total-balance">
-                ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">USD Value</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Realized P/L</CardTitle>
-              <TrendingUp className={`h-4 w-4 ${realizedPL >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-display font-bold tabular-nums ${realizedPL >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-realized-pl">
-                {realizedPL >= 0 ? '+' : ''}${realizedPL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">All-time profits</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Unrealized P/L</CardTitle>
-              <TrendingUp className={`h-4 w-4 ${unrealizedPL >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-display font-bold tabular-nums ${unrealizedPL >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-unrealized-pl">
-                {unrealizedPL >= 0 ? '+' : ''}${unrealizedPL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Current positions</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Positions</CardTitle>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-display font-bold tabular-nums" data-testid="text-active-positions">
-                {activePositions}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Open trades</p>
-            </CardContent>
-          </Card>
+      <div className="max-w-[1600px] mx-auto px-6 py-8">
+        {/* Row 1: KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <KPICard
+            title="Total Balance"
+            value={`$${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle="USD Value"
+            icon={Wallet}
+            testId="text-total-balance"
+          />
+          <KPICard
+            title="Realized P/L"
+            value={`${realizedPL >= 0 ? '+' : ''}$${Math.abs(realizedPL).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle="All-time profits"
+            icon={BarChart3}
+            trend={realizedPL >= 0 ? 'up' : 'down'}
+            testId="text-realized-pl"
+          />
+          <KPICard
+            title="Unrealized P/L"
+            value={`${unrealizedPL >= 0 ? '+' : ''}$${Math.abs(unrealizedPL).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            subtitle="Current positions"
+            icon={TrendingUp}
+            trend={unrealizedPL >= 0 ? 'up' : 'down'}
+            testId="text-unrealized-pl"
+          />
+          <KPICard
+            title="Active Positions"
+            value={`${activePositions}`}
+            subtitle="Open trades"
+            icon={ArrowLeftRight}
+            testId="text-active-positions"
+          />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Portfolio & Charts */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Portfolio Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-display text-2xl">Portfolio</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {positions.length === 0 ? (
+        {/* Row 2: Portfolio/Positions (left) + Live Opportunities (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 mb-8">
+          {/* Left: Tabbed Portfolio & Positions */}
+          <Card>
+            <CardHeader className="border-b border-border pb-4">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="portfolio" data-testid="tab-portfolio">Portfolio</TabsTrigger>
+                  <TabsTrigger value="positions" data-testid="tab-positions">Arbitrage Positions</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardHeader>
+            <CardContent className="p-0">
+              {activeTab === 'portfolio' && (
+                positions.length === 0 ? (
                   <div className="text-center py-12">
                     <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-lg font-semibold mb-2">No positions yet</p>
@@ -275,43 +373,42 @@ export default function Dashboard() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow>
+                        <TableRow className="hover:bg-transparent">
                           <TableHead>Asset</TableHead>
                           <TableHead className="text-right">Quantity</TableHead>
                           <TableHead className="text-right">Avg Entry</TableHead>
                           <TableHead className="text-right">Current Price</TableHead>
-                          <TableHead className="text-right">Value</TableHead>
+                          <TableHead className="text-right">Value (USD)</TableHead>
                           <TableHead className="text-right">P/L USD</TableHead>
                           <TableHead className="text-right">P/L %</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {positions.map((position: any) => {
-                          const averageEntryPrice = position.averageEntryPrice ?? 0;
-                          const currentValueUsd = position.currentValueUsd ?? 0;
-                          const profitLossUsd = position.profitLossUsd ?? 0;
-                          const profitLossPercent = position.profitLossPercent ?? 0;
+                          const averageEntryPrice = Number(position.averageEntryPrice) || 0;
+                          const currentValueUsd = Number(position.currentValueUsd) || 0;
+                          const quantity = Number(position.quantity) || 0;
+                          const currentPricePerUnit = quantity > 0 ? currentValueUsd / quantity : 0;
+                          const profitLossUsd = Number(position.profitLossUsd) || 0;
+                          const profitLossPercent = Number(position.profitLossPercent) || 0;
+                          const isProfit = profitLossUsd >= 0;
                           
                           return (
-                            <TableRow key={position.id} data-testid={`row-position-${position.id}`}>
+                            <TableRow key={position.id} className="hover-elevate" data-testid={`row-position-${position.id}`}>
                               <TableCell className="font-semibold">{position.assetSymbol || '-'}</TableCell>
-                              <TableCell className="text-right tabular-nums">{position.quantity ?? 0}</TableCell>
-                              <TableCell className="text-right tabular-nums">${averageEntryPrice.toLocaleString()}</TableCell>
-                              <TableCell className="text-right tabular-nums">${currentValueUsd.toLocaleString()}</TableCell>
-                              <TableCell className="text-right tabular-nums font-semibold">${currentValueUsd.toLocaleString()}</TableCell>
+                              <TableCell className="text-right tabular-nums">{quantity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</TableCell>
+                              <TableCell className="text-right tabular-nums">${averageEntryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                              <TableCell className="text-right tabular-nums">${currentPricePerUnit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">${currentValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                               <TableCell className="text-right tabular-nums">
-                                <span className={profitLossUsd >= 0 ? "text-green-600" : "text-red-600"}>
-                                  {profitLossUsd >= 0 ? "+" : ""}${profitLossUsd.toLocaleString()}
+                                <span className={isProfit ? 'text-green-600 dark:text-[hsl(var(--success))]' : 'text-red-600 dark:text-[hsl(var(--destructive))]'}>
+                                  {isProfit ? <TrendingUp className="h-3 w-3 inline mr-1" /> : <TrendingDown className="h-3 w-3 inline mr-1" />}
+                                  {isProfit ? '+' : ''}${Math.abs(profitLossUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Badge variant={profitLossPercent >= 0 ? "default" : "destructive"} className="tabular-nums">
-                                  {profitLossPercent >= 0 ? (
-                                    <TrendingUp className="h-3 w-3 mr-1" />
-                                  ) : (
-                                    <TrendingDown className="h-3 w-3 mr-1" />
-                                  )}
-                                  {profitLossPercent >= 0 ? "+" : ""}{profitLossPercent.toFixed(2)}%
+                                <Badge variant={isProfit ? "default" : "destructive"} className="tabular-nums">
+                                  {isProfit ? '+' : ''}{profitLossPercent.toFixed(2)}%
                                 </Badge>
                               </TableCell>
                             </TableRow>
@@ -320,23 +417,12 @@ export default function Dashboard() {
                       </TableBody>
                     </Table>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                )
+              )}
 
-            {/* Arbitrage Positions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-display text-2xl">
-                  <div className="flex items-center gap-2">
-                    <ArrowLeftRight className="h-5 w-5" />
-                    Arbitrage Positions
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isPositionsLoading ? (
-                  <div className="space-y-4">
+              {activeTab === 'positions' && (
+                isPositionsLoading ? (
+                  <div className="space-y-4 p-6">
                     {[1, 2, 3].map((i) => (
                       <Skeleton key={i} className="h-20 w-full" />
                     ))}
@@ -345,7 +431,7 @@ export default function Dashboard() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow>
+                        <TableRow className="hover:bg-transparent">
                           <TableHead>Asset</TableHead>
                           <TableHead>Route</TableHead>
                           <TableHead className="text-right">Entry</TableHead>
@@ -363,14 +449,19 @@ export default function Dashboard() {
                           const quantity = Number(pos.quantity) || 0;
                           const finalPnlUsd = pos.finalPnlUsd != null ? Number(pos.finalPnlUsd) : null;
                           const finalPnlPercent = Number(pos.finalPnlPercent) || 0;
+                          const isProfit = finalPnlUsd != null && finalPnlUsd >= 0;
                           
                           return (
-                            <TableRow key={pos.id} data-testid={`row-arb-position-${pos.id}`}>
+                            <TableRow key={pos.id} className="hover-elevate" data-testid={`row-arb-position-${pos.id}`}>
                               <TableCell>
                                 <Badge variant="secondary">{pos.assetSymbol || '-'}</Badge>
                               </TableCell>
                               <TableCell className="text-sm">
-                                {pos.entryExchange || '-'} → {pos.exitExchange || '-'}
+                                <div className="flex items-center gap-1">
+                                  <span>{pos.entryExchange || '-'}</span>
+                                  <ArrowLeftRight className="h-3 w-3" />
+                                  <span>{pos.exitExchange || '-'}</span>
+                                </div>
                               </TableCell>
                               <TableCell className="text-right tabular-nums">
                                 ${entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -386,15 +477,11 @@ export default function Dashboard() {
                               <TableCell className="text-right">
                                 {finalPnlUsd != null ? (
                                   <div className="space-y-1">
-                                    <div className={`font-semibold tabular-nums ${finalPnlUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                      {finalPnlUsd >= 0 ? (
-                                        <TrendingUp className="h-3 w-3 inline mr-1" />
-                                      ) : (
-                                        <TrendingDown className="h-3 w-3 inline mr-1" />
-                                      )}
-                                      {finalPnlUsd >= 0 ? '+' : ''}${finalPnlUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <div className={`font-semibold tabular-nums ${isProfit ? 'text-green-600 dark:text-[hsl(var(--success))]' : 'text-red-600 dark:text-[hsl(var(--destructive))]'}`}>
+                                      {isProfit ? <TrendingUp className="h-3 w-3 inline mr-1" /> : <TrendingDown className="h-3 w-3 inline mr-1" />}
+                                      {isProfit ? '+' : ''}${Math.abs(finalPnlUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
-                                    <div className={`text-xs tabular-nums ${finalPnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    <div className={`text-xs tabular-nums ${finalPnlPercent >= 0 ? 'text-green-600 dark:text-[hsl(var(--success))]' : 'text-red-600 dark:text-[hsl(var(--destructive))]'}`}>
                                       ({finalPnlPercent >= 0 ? '+' : ''}{finalPnlPercent.toFixed(2)}%)
                                     </div>
                                   </div>
@@ -403,12 +490,15 @@ export default function Dashboard() {
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={pos.status === "open" ? "default" : "secondary"}>
+                                <Badge 
+                                  variant={pos.status === "open" ? "default" : "secondary"}
+                                  className={pos.status === "open" ? "bg-green-600 dark:bg-[hsl(var(--success))] border-0" : ""}
+                                >
                                   {pos.status || 'unknown'}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
-                                {pos.openedAt ? new Date(pos.openedAt).toLocaleDateString() : '-'}
+                                {pos.openedAt ? new Date(pos.openedAt * 1000).toLocaleDateString() : '-'}
                               </TableCell>
                             </TableRow>
                           );
@@ -417,113 +507,136 @@ export default function Dashboard() {
                     </Table>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ArrowLeftRight className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p>No arbitrage positions yet</p>
+                  <div className="text-center py-12">
+                    <ArrowLeftRight className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-semibold mb-2">No arbitrage positions yet</p>
+                    <p className="text-sm text-muted-foreground">Positions will appear here when created</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                )
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Price Charts */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-display text-2xl">Price Charts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="btc" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="btc" data-testid="tab-btc">BTC</TabsTrigger>
-                    <TabsTrigger value="eth" data-testid="tab-eth">ETH</TabsTrigger>
-                    <TabsTrigger value="sol" data-testid="tab-sol">SOL</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="btc" className="pt-4">
+          {/* Right: Live Opportunities with Filters */}
+          <Card>
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-xl font-bold">Live Opportunities</CardTitle>
+              {/* Filter Controls */}
+              <div className="grid grid-cols-1 gap-3 mt-4">
+                <Input
+                  placeholder="Search by asset or exchange..."
+                  value={oppSearch}
+                  onChange={(e) => setOppSearch(e.target.value)}
+                  data-testid="input-opp-search"
+                  className="w-full"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={oppAssetFilter} onValueChange={setOppAssetFilter}>
+                    <SelectTrigger data-testid="select-asset-filter">
+                      <SelectValue placeholder="All Assets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Assets</SelectItem>
+                      {uniqueAssets.map((asset) => (
+                        <SelectItem key={asset} value={asset}>{asset}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={oppMinSpread} onValueChange={setOppMinSpread}>
+                    <SelectTrigger data-testid="select-spread-filter">
+                      <SelectValue placeholder="Min Spread" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">All Spreads</SelectItem>
+                      <SelectItem value="0.5">&gt; 0.5%</SelectItem>
+                      <SelectItem value="1">&gt; 1%</SelectItem>
+                      <SelectItem value="2">&gt; 2%</SelectItem>
+                      <SelectItem value="3">&gt; 3%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
+              {isOpportunitiesLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full" />
+                  ))}
+                </div>
+              ) : filteredOpportunities.length > 0 ? (
+                filteredOpportunities.slice(0, 10).map((opp: any, idx: number) => (
+                  <OpportunityCard key={idx} opportunity={opp} index={idx} />
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground">No opportunities match your filters</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 3: Price Charts (left) + Quick Actions (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
+          {/* Left: Price Charts */}
+          <Card>
+            <CardHeader className="border-b border-border">
+              <Tabs defaultValue="btc" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="btc" data-testid="tab-btc">BTC</TabsTrigger>
+                  <TabsTrigger value="eth" data-testid="tab-eth">ETH</TabsTrigger>
+                  <TabsTrigger value="sol" data-testid="tab-sol">SOL</TabsTrigger>
+                </TabsList>
+                <TabsContent value="btc" className="mt-0">
+                  <CardContent className="p-6">
                     <PriceChart symbol="BTC" />
-                  </TabsContent>
-                  <TabsContent value="eth" className="pt-4">
+                  </CardContent>
+                </TabsContent>
+                <TabsContent value="eth" className="mt-0">
+                  <CardContent className="p-6">
                     <PriceChart symbol="ETH" />
-                  </TabsContent>
-                  <TabsContent value="sol" className="pt-4">
+                  </CardContent>
+                </TabsContent>
+                <TabsContent value="sol" className="mt-0">
+                  <CardContent className="p-6">
                     <PriceChart symbol="SOL" />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </TabsContent>
+              </Tabs>
+            </CardHeader>
+          </Card>
 
-          {/* Right Column - Opportunities & Wallet */}
-          <div className="space-y-8">
-            {/* Arbitrage Opportunities */}
+          {/* Right: Wallet & Quick Actions */}
+          <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="font-display text-2xl">Live Opportunities</CardTitle>
+                <CardTitle className="text-xl font-bold">Wallet</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {isOpportunitiesLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-24 w-full" />
-                    ))}
-                  </div>
-                ) : (
-                  opportunities?.slice(0, 5).map((opp: any, idx: number) => {
-                    const spread = opp.spread ?? 0;
-                    const buyPrice = opp.buyPrice ?? 0;
-                    const sellPrice = opp.sellPrice ?? 0;
-                    
-                    return (
-                      <div key={idx} className="p-4 border rounded-lg hover-elevate" data-testid={`card-opportunity-${idx}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-display font-bold text-lg">{opp.asset || '-'}</span>
-                          <Badge className="bg-green-600 text-white">
-                            {spread.toFixed(2)}% Spread
-                          </Badge>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Buy on {opp.buyExchange || '-'}</span>
-                            <span className="font-semibold tabular-nums">${buyPrice.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Sell on {opp.sellExchange || '-'}</span>
-                            <span className="font-semibold tabular-nums">${sellPrice.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Wallet Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-display text-2xl">Wallet</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
+                <div className="p-4 bg-muted/50 rounded-xl">
                   <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
-                  <p className="text-2xl font-display font-bold tabular-nums" data-testid="text-available-balance">
+                  <p className="text-2xl font-bold tabular-nums" data-testid="text-available-balance">
                     ${availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <Button 
-                    className="flex-1" 
+                    className="w-full h-12 text-base font-semibold" 
                     onClick={() => setDepositOpen(true)}
                     data-testid="button-deposit"
                   >
-                    <ArrowDownLeft className="h-4 w-4 mr-2" />
+                    <ArrowDownLeft className="h-5 w-5 mr-2" />
                     Deposit
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="flex-1"
+                    className="w-full h-12 text-base font-semibold"
                     onClick={() => setWithdrawOpen(true)}
                     data-testid="button-withdraw"
                   >
-                    <ArrowUpRight className="h-4 w-4 mr-2" />
+                    <ArrowUpRight className="h-5 w-5 mr-2" />
                     Withdraw
                   </Button>
                 </div>
