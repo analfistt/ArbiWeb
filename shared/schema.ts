@@ -40,6 +40,13 @@ export const transactions = sqliteTable("transactions", {
   status: text("status").notNull().default("pending"), // pending, completed, rejected
   txHashOrReference: text("tx_hash_or_reference"),
   destinationAddress: text("destination_address"),
+  // NOWPayments specific fields
+  cryptoCurrency: text("crypto_currency"), // USDT, BTC, ETH, USDC
+  cryptoAmount: real("crypto_amount"),
+  paymentProvider: text("payment_provider"), // nowpayments
+  paymentId: text("payment_id"), // NOWPayments payment_id
+  orderId: text("order_id"), // Internal order ID
+  rawIpnData: text("raw_ipn_data"), // JSON blob for debugging
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 

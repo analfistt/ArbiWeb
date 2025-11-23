@@ -51,6 +51,12 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'pending',
     tx_hash_or_reference TEXT,
     destination_address TEXT,
+    crypto_currency TEXT,
+    crypto_amount REAL,
+    payment_provider TEXT,
+    payment_id TEXT,
+    order_id TEXT,
+    raw_ipn_data TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
@@ -102,7 +108,10 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransactionsByUserId(userId: number): Promise<Transaction[]>;
   getAllTransactions(): Promise<Transaction[]>;
+  getTransactionByPaymentId(paymentId: string): Promise<Transaction | undefined>;
+  getTransactionByOrderId(orderId: string): Promise<Transaction | undefined>;
   updateTransactionStatus(id: number, status: string): Promise<void>;
+  updateTransactionWithIpnData(id: number, updates: Partial<Transaction>): Promise<void>;
 
   // Admin methods
   createAdminAdjustment(adjustment: InsertAdminAdjustment): Promise<AdminAdjustment>;
@@ -262,18 +271,30 @@ export class SQLiteStorage implements IStorage {
   }
 
   // Transaction methods
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+  async createTransaction(transaction: any): Promise<Transaction> {
     const stmt = db.prepare(`
-      INSERT INTO transactions (user_id, type, amount_usd, destination_address)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO transactions (
+        user_id, type, amount_usd, destination_address,
+        crypto_currency, crypto_amount, payment_provider, payment_id, order_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       transaction.userId,
       transaction.type,
       transaction.amountUsd,
-      transaction.destinationAddress || null
+      transaction.destinationAddress || null,
+      transaction.cryptoCurrency || null,
+      transaction.cryptoAmount || null,
+      transaction.paymentProvider || null,
+      transaction.paymentId || null,
+      transaction.orderId || null
     );
     const tx = db.prepare("SELECT * FROM transactions WHERE id = ?").get(result.lastInsertRowid) as any;
+    return this.mapTransaction(tx);
+  }
+
+  private mapTransaction(tx: any): Transaction {
     return {
       id: tx.id,
       userId: tx.user_id,
@@ -282,40 +303,67 @@ export class SQLiteStorage implements IStorage {
       status: tx.status,
       txHashOrReference: tx.tx_hash_or_reference,
       destinationAddress: tx.destination_address,
+      cryptoCurrency: tx.crypto_currency,
+      cryptoAmount: tx.crypto_amount,
+      paymentProvider: tx.payment_provider,
+      paymentId: tx.payment_id,
+      orderId: tx.order_id,
+      rawIpnData: tx.raw_ipn_data,
       createdAt: new Date(tx.created_at * 1000),
     };
   }
 
   async getTransactionsByUserId(userId: number): Promise<Transaction[]> {
     const transactions = db.prepare("SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC").all(userId) as any[];
-    return transactions.map(tx => ({
-      id: tx.id,
-      userId: tx.user_id,
-      type: tx.type,
-      amountUsd: tx.amount_usd,
-      status: tx.status,
-      txHashOrReference: tx.tx_hash_or_reference,
-      destinationAddress: tx.destination_address,
-      createdAt: new Date(tx.created_at * 1000),
-    }));
+    return transactions.map(tx => this.mapTransaction(tx));
   }
 
   async getAllTransactions(): Promise<Transaction[]> {
     const transactions = db.prepare("SELECT * FROM transactions ORDER BY created_at DESC").all() as any[];
-    return transactions.map(tx => ({
-      id: tx.id,
-      userId: tx.user_id,
-      type: tx.type,
-      amountUsd: tx.amount_usd,
-      status: tx.status,
-      txHashOrReference: tx.tx_hash_or_reference,
-      destinationAddress: tx.destination_address,
-      createdAt: new Date(tx.created_at * 1000),
-    }));
+    return transactions.map(tx => this.mapTransaction(tx));
+  }
+
+  async getTransactionByPaymentId(paymentId: string): Promise<Transaction | undefined> {
+    const tx = db.prepare("SELECT * FROM transactions WHERE payment_id = ?").get(paymentId) as any;
+    if (!tx) return undefined;
+    return this.mapTransaction(tx);
+  }
+
+  async getTransactionByOrderId(orderId: string): Promise<Transaction | undefined> {
+    const tx = db.prepare("SELECT * FROM transactions WHERE order_id = ?").get(orderId) as any;
+    if (!tx) return undefined;
+    return this.mapTransaction(tx);
   }
 
   async updateTransactionStatus(id: number, status: string): Promise<void> {
     db.prepare("UPDATE transactions SET status = ? WHERE id = ?").run(status, id);
+  }
+
+  async updateTransactionWithIpnData(id: number, updates: Partial<Transaction>): Promise<void> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.status !== undefined) {
+      fields.push("status = ?");
+      values.push(updates.status);
+    }
+    if (updates.txHashOrReference !== undefined) {
+      fields.push("tx_hash_or_reference = ?");
+      values.push(updates.txHashOrReference);
+    }
+    if (updates.cryptoAmount !== undefined) {
+      fields.push("crypto_amount = ?");
+      values.push(updates.cryptoAmount);
+    }
+    if (updates.rawIpnData !== undefined) {
+      fields.push("raw_ipn_data = ?");
+      values.push(updates.rawIpnData);
+    }
+
+    if (fields.length > 0) {
+      values.push(id);
+      db.prepare(`UPDATE transactions SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+    }
   }
 
   // Admin methods

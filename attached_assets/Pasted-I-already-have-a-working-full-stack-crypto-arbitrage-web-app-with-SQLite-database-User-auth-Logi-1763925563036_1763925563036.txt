@@ -1,0 +1,318 @@
+I already have a working full-stack crypto arbitrage web app with:
+
+SQLite database
+
+User auth (Login / Sign Up)
+
+User dashboard with balance, portfolio, arbitrage opportunities
+
+Admin Back Office
+
+A “Deposit” button in the user dashboard
+
+Now I want you to extend the existing project with a real (or at least properly structured) integration to NOWPayments and add WebSockets for live updates.
+
+Please modify the existing codebase instead of starting a new project.
+
+1. Environment Variables / Secrets
+
+Add and use the following environment variables (secrets):
+
+NOWPAYMENTS_API_KEY – the public API key from NOWPayments
+
+NOWPAYMENTS_IPN_SECRET – IPN (Instant Payment Notification) secret for verifying callbacks (if used)
+
+APP_BASE_URL – base URL of this app (for building callback / IPN URLs)
+
+JWT_SECRET (if not already present) – for auth tokens
+
+WS_SECRET or reuse JWT_SECRET (if needed for authenticating WebSocket connections)
+
+Make sure there is one configuration file/module that reads these environment variables and the app uses them everywhere.
+
+2. Deposit Flow: USDT, BTC, ETH, USDC
+
+When the user clicks “Deposit” in the dashboard:
+
+Open a Deposit modal/page where the user can:
+
+Choose a currency: USDT, BTC, ETH, USDC
+
+Enter an amount (optional, depending on NOWPayments requirements)
+
+On form submission, call a backend endpoint, for example:
+
+POST /api/deposits/create
+
+This endpoint should:
+
+Read the authenticated user ID.
+
+Call the NOWPayments API to create a payment:
+
+Use the appropriate parameters:
+
+price_amount = amount in USD (or relevant fiat/crypto)
+
+price_currency = usd (or another base currency, depending on configuration)
+
+pay_currency = one of usdt, btc, eth, usdc (match NOWPayments expected symbols)
+
+order_id = some internal ID or deposit_<userId>_<timestamp>
+
+ipn_callback_url = ${APP_BASE_URL}/api/nowpayments/ipn
+
+Save a new record in the transactions table:
+
+user_id
+
+type = 'deposit'
+
+amount_usd (or amount in main currency)
+
+status = 'pending'
+
+tx_hash_or_reference = NOWPayments payment_id or similar
+
+created_at
+
+Return to the frontend:
+
+The deposit address or payment instructions from NOWPayments (e.g., pay_address)
+
+The currency and amount
+
+Any QR code URL or data, if available
+
+On the frontend, show:
+
+A clear deposit address for the selected currency (USDT/BTC/ETH/USDC)
+
+Optionally a QR code (if the API returns one)
+
+Status message like “Waiting for payment…”
+
+3. Handling NOWPayments Callbacks (IPN / Webhook)
+
+Implement a backend route for NOWPayments IPN:
+
+POST /api/nowpayments/ipn
+
+Functionality:
+
+Verify the IPN request:
+
+Use NOWPAYMENTS_IPN_SECRET or recommended verification method from NOWPayments docs.
+
+Validate that the signature / HMAC (if used) is correct.
+
+Ensure it is not a replay attack (optional: store processed IPN IDs).
+
+Parse the payment status:
+
+Use fields like payment_status, payment_id, order_id, pay_amount, pay_currency etc.
+
+Find the corresponding transaction in the database by payment_id / order_id.
+
+If payment is successfully completed:
+
+Update transactions.status to completed.
+
+Increase the user’s balance in the wallets/balances table accordingly.
+
+Insert any related records if needed (e.g., a log of deposits).
+
+Trigger a WebSocket event so:
+
+The user’s dashboard instantly shows the new balance.
+
+The admin dashboard instantly sees the new completed deposit.
+
+If payment failed or was canceled:
+
+Update transactions.status accordingly (e.g., rejected or failed).
+
+Also broadcast the status via WebSockets (optional but nice).
+
+4. WebSockets for Live Updates
+
+Add WebSockets (or Socket.IO, or a similar library that works well on Replit) to provide real-time updates.
+
+Backend WebSocket Server
+
+Set up a WebSocket / Socket.IO server in the backend.
+
+On user connection:
+
+Authenticate (e.g., via token or session cookie).
+
+Join the user to a room like user_<userId> so we can push events only to that user.
+
+Create a separate room or namespace for admins, e.g. admin_dashboard, for real-time monitoring of all deposits.
+
+Define events such as:
+
+deposit_updated (for users)
+
+Payload:
+
+transaction_id
+
+new_status
+
+new_balance
+
+Sent to the specific user room user_<userId> when:
+
+A deposit is created
+
+A deposit status becomes completed and balance changes
+
+admin_deposits_stream (for admin)
+
+Payload:
+
+User info (masked, but include user_id and email)
+
+Transaction info: amount, currency, status, timestamp
+
+Sent to admin_dashboard room whenever:
+
+A new deposit is created
+
+A deposit status changes (pending → completed / rejected)
+
+Make sure the WebSocket server integrates smoothly with the existing auth system (same JWT or session).
+
+Frontend Integration
+
+User Dashboard:
+
+When the authenticated user opens the dashboard, establish a WebSocket connection.
+
+Subscribe/listen to:
+
+deposit_updated
+
+When a deposit is confirmed:
+
+Update:
+
+Balance UI (top summary card)
+
+Recent transactions list
+
+Optionally show a toast notification: “Deposit confirmed! Your new balance is X USD.”
+
+Admin Dashboard:
+
+On admin dashboard load, establish a WebSocket connection as admin.
+
+Join the admin_dashboard room.
+
+Listen to:
+
+admin_deposits_stream
+
+On events:
+
+Update the admin deposit table in real time:
+
+Add new rows for new deposits.
+
+Change the status field for updated ones.
+
+Optionally show a small live counter of “New deposits in the last X minutes.”
+
+5. UI/UX Changes for Deposit Modal
+
+In the user dashboard UI, update the Deposit flow:
+
+“Deposit” button opens a modal or dedicated page.
+
+The modal should include:
+
+Dropdown / tabs for:
+
+USDT, BTC, ETH, USDC
+
+Amount input (optional for NOWPayments, but good for UX).
+
+“Generate Deposit Address” button.
+
+After calling the backend and receiving the deposit data:
+
+Show:
+
+Selected currency.
+
+Deposit address (clearly formatted, with copy-to-clipboard button).
+
+Amount (if fixed).
+
+A status line: “Waiting for confirmation from the network…”
+
+Optionally show a small “Live status” indicator that will update when WebSocket deposit_updated event arrives.
+
+6. Data Model Adjustments (If Needed)
+
+If needed, adjust the transactions table for deposits:
+
+Add fields such as:
+
+crypto_currency (USDT, BTC, ETH, USDC)
+
+crypto_amount
+
+fiat_amount (amount_usd)
+
+payment_provider (e.g., nowpayments)
+
+payment_id (NOWPayments ID)
+
+order_id
+
+raw_ipn_data (optional JSON blob for debugging)
+
+Make sure all migrations / schema changes are applied for SQLite.
+
+7. Keep Everything Else Working
+
+Do not break existing:
+
+Login / Sign Up
+
+Dashboard
+
+Arbitrage UI
+
+Admin Back Office
+
+Just extend the project with:
+
+NOWPayments deposit creation & callback handler
+
+Support for USDT, BTC, ETH, USDC
+
+WebSocket real-time updates for:
+
+User balance on deposit completion
+
+Admin live deposit monitoring
+
+Goal:
+After your changes, the system should:
+
+Let a user choose USDT / BTC / ETH / USDC and generate a NOWPayments deposit address.
+
+Receive IPN/webhook from NOWPayments after deposit and update:
+
+Transaction status
+
+User balance
+
+Push live updates via WebSockets so:
+
+The user sees their new balance and deposit status immediately.
+
+Admin sees all deposits as they happen.
