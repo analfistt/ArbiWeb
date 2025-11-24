@@ -15,6 +15,7 @@ import {
 import { DepositDialog } from "@/components/deposit-dialog";
 import { WithdrawDialog } from "@/components/withdraw-dialog";
 import { TradingChart } from "@/components/trading-chart";
+import { Timeframe } from "@/components/timeframe-selector";
 import { TopNav } from "@/components/top-nav";
 import { useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
@@ -104,6 +105,11 @@ export default function Dashboard() {
   const [oppAssetFilter, setOppAssetFilter] = useState<string>('all');
   const [oppMinSpread, setOppMinSpread] = useState<string>('0');
   const [oppSearch, setOppSearch] = useState<string>('');
+  
+  // Lift timeframe state to dashboard level to persist across tab switches
+  const [btcTimeframe, setBtcTimeframe] = useState<Timeframe>("1H");
+  const [ethTimeframe, setEthTimeframe] = useState<Timeframe>("1H");
+  const [solTimeframe, setSolTimeframe] = useState<Timeframe>("1H");
 
   // Fetch dashboard data
   const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
@@ -567,17 +573,32 @@ export default function Dashboard() {
                 </TabsList>
                 <TabsContent value="btc" className="mt-0">
                   <CardContent className="px-4 py-6">
-                    <TradingChart assetSymbol="BTC" assetName="Bitcoin" />
+                    <TradingChart 
+                      assetSymbol="BTC" 
+                      assetName="Bitcoin"
+                      timeframe={btcTimeframe}
+                      onTimeframeChange={setBtcTimeframe}
+                    />
                   </CardContent>
                 </TabsContent>
                 <TabsContent value="eth" className="mt-0">
                   <CardContent className="px-4 py-6">
-                    <TradingChart assetSymbol="ETH" assetName="Ethereum" />
+                    <TradingChart 
+                      assetSymbol="ETH" 
+                      assetName="Ethereum"
+                      timeframe={ethTimeframe}
+                      onTimeframeChange={setEthTimeframe}
+                    />
                   </CardContent>
                 </TabsContent>
                 <TabsContent value="sol" className="mt-0">
                   <CardContent className="px-4 py-6">
-                    <TradingChart assetSymbol="SOL" assetName="Solana" />
+                    <TradingChart 
+                      assetSymbol="SOL" 
+                      assetName="Solana"
+                      timeframe={solTimeframe}
+                      onTimeframeChange={setSolTimeframe}
+                    />
                   </CardContent>
                 </TabsContent>
               </Tabs>

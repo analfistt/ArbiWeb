@@ -1,10 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { TimeframeSelector, Timeframe } from "./timeframe-selector";
 
 interface TradingChartProps {
   assetSymbol: string;
   assetName?: string;
+  timeframe?: Timeframe;
+  onTimeframeChange?: (timeframe: Timeframe) => void;
 }
 
 interface ChartDataPoint {
@@ -20,29 +23,96 @@ const ASSET_COLORS = {
   DEFAULT: { line: "#F3BA2F", gradient: "rgba(243, 186, 47, 0.3)" }
 };
 
-export function TradingChart({ assetSymbol, assetName }: TradingChartProps) {
+function getTimeframeConfig(timeframe: Timeframe) {
+  switch (timeframe) {
+    case "1m":
+      // Last 1 minute: 60 data points at 1 second intervals
+      return { dataPoints: 60, intervalMs: 1 * 1000, label: "1m" };
+    case "15m":
+      // Last 15 minutes: 60 data points at 15 second intervals
+      return { dataPoints: 60, intervalMs: 15 * 1000, label: "15m" };
+    case "1H":
+      // Last 1 hour: 60 data points at 1 minute intervals
+      return { dataPoints: 60, intervalMs: 60 * 1000, label: "1H" };
+    case "1D":
+      // Last 1 day: 48 data points at 30 minute intervals
+      return { dataPoints: 48, intervalMs: 30 * 60 * 1000, label: "1D" };
+    case "1W":
+      // Last 1 week: 28 data points at 6 hour intervals
+      return { dataPoints: 28, intervalMs: 6 * 60 * 60 * 1000, label: "1W" };
+    case "1M":
+      // Last 1 month: 30 data points at 1 day intervals
+      return { dataPoints: 30, intervalMs: 24 * 60 * 60 * 1000, label: "1M" };
+    default:
+      return { dataPoints: 60, intervalMs: 60 * 1000, label: "1H" };
+  }
+}
+
+function formatTimeLabel(timestamp: number, timeframe: Timeframe): string {
+  const date = new Date(timestamp);
+  
+  switch (timeframe) {
+    case "1m":
+    case "15m":
+      return date.toLocaleTimeString("en-US", { 
+        hour: "2-digit", 
+        minute: "2-digit",
+        hour12: false 
+      });
+    case "1H":
+      return date.toLocaleTimeString("en-US", { 
+        hour: "2-digit", 
+        minute: "2-digit",
+        hour12: false 
+      });
+    case "1D":
+      return date.toLocaleDateString("en-US", { 
+        month: "short", 
+        day: "numeric" 
+      });
+    case "1W":
+    case "1M":
+      return date.toLocaleDateString("en-US", { 
+        month: "short", 
+        day: "numeric" 
+      });
+    default:
+      return date.toLocaleTimeString("en-US", { 
+        hour: "2-digit", 
+        minute: "2-digit",
+        hour12: false 
+      });
+  }
+}
+
+export function TradingChart({ 
+  assetSymbol, 
+  assetName,
+  timeframe: externalTimeframe,
+  onTimeframeChange: externalOnChange 
+}: TradingChartProps) {
+  // Use external timeframe if provided, otherwise use local state (fallback)
+  const [internalTimeframe, setInternalTimeframe] = useState<Timeframe>("1H");
+  const timeframe = externalTimeframe ?? internalTimeframe;
+  const setTimeframe = externalOnChange ?? setInternalTimeframe;
+  
   const { data, currentPrice, change24h, colors } = useMemo(() => {
     const basePrice = 
       assetSymbol === "BTC" ? 43250 :
       assetSymbol === "ETH" ? 2680 :
       assetSymbol === "SOL" ? 98.5 : 100;
 
-    const dataPoints = 50;
+    const config = getTimeframeConfig(timeframe);
     const chartData: ChartDataPoint[] = [];
     const now = Date.now();
 
-    for (let i = 0; i < dataPoints; i++) {
+    for (let i = 0; i < config.dataPoints; i++) {
       const variance = (Math.random() - 0.5) * basePrice * 0.025;
       const trend = i * (basePrice * 0.0004);
       const price = basePrice + variance + trend;
       
-      const timestamp = now - (dataPoints - i) * 30 * 60 * 1000;
-      const date = new Date(timestamp);
-      const timeStr = date.toLocaleTimeString("en-US", { 
-        hour: "2-digit", 
-        minute: "2-digit",
-        hour12: false 
-      });
+      const timestamp = now - (config.dataPoints - i) * config.intervalMs;
+      const timeStr = formatTimeLabel(timestamp, timeframe);
 
       chartData.push({
         time: timeStr,
@@ -63,12 +133,24 @@ export function TradingChart({ assetSymbol, assetName }: TradingChartProps) {
       change24h: change,
       colors: assetColors
     };
-  }, [assetSymbol]);
+  }, [assetSymbol, timeframe]);
 
   const isPositive = change24h >= 0;
 
+  // Display the active timeframe as the change period
+  const changePeriodLabel = timeframe;
+
   return (
     <div className="w-full" data-testid={`trading-chart-${assetSymbol.toLowerCase()}`}>
+      {/* Timeframe Selector */}
+      <div className="flex items-center justify-between mb-4">
+        <TimeframeSelector 
+          currentTimeframe={timeframe}
+          onChange={setTimeframe}
+        />
+      </div>
+
+      {/* Chart Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-baseline gap-3">
           <div>
@@ -103,7 +185,7 @@ export function TradingChart({ assetSymbol, assetName }: TradingChartProps) {
           <span className="tabular-nums" data-testid={`change-${assetSymbol.toLowerCase()}`}>
             {isPositive ? "+" : ""}{change24h.toFixed(2)}%
           </span>
-          <span className="text-xs text-muted-foreground font-normal">24h</span>
+          <span className="text-xs text-muted-foreground font-normal">{changePeriodLabel}</span>
         </div>
       </div>
 

@@ -1,0 +1,117 @@
+📌 Prompt for Replit AI (Add Timeframe Selector to Crypto Charts)
+
+I already have working price charts for assets (BTC, ETH, SOL, etc.) in my crypto arbitrage app.
+Now I want to add a timeframe selector component to the charts, similar to professional crypto exchanges like Binance.
+
+🎯 Feature Requirements
+
+Add a visual timeframe selector above each chart with the following options:
+
+1m | 15m | 1H | 1D | 1W | 1M
+
+
+These represent:
+
+1m = 1 minute
+
+15m = 15 minutes
+
+1H = 1 hour
+
+1D = 1 day
+
+1W = 1 week
+
+1M = 1 month
+
+When the user clicks one of these, the chart must update automatically using the selected timeframe.
+
+Use the same asset prices API already used in the project (CoinGecko / Binance API / etc.).
+
+If multiple endpoints are needed, use the appropriate query parameters (like interval=1h, interval=1d, etc.).
+
+If exact granular data isn’t available, resample/coalesce to match timeframe visually.
+
+The timeframe selector must:
+
+Highlight the active selection (yellow/gold accent, similar to Binance).
+
+Be responsive (mobile-friendly).
+
+Use hover and active styles consistent with the dark UI theme.
+
+🎨 UI/UX Requirements
+
+Place selector bar above the chart header or between asset info and the chart.
+
+Use pill-shaped or tab-shaped buttons with:
+
+Rounded corners
+
+Subtle hover glow
+
+Selected state color = #F3BA2F (Binance yellow)
+
+Unselected state = muted gray text on dark background.
+
+Example styling:
+
+.timeframe-option {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease-out;
+}
+
+.timeframe-option.active {
+  background-color: #F3BA2F;
+  color: #000;
+}
+
+🔧 Implementation Guidelines
+
+Create a reusable component:
+<TimeframeSelector />
+
+Props:
+
+currentTimeframe
+
+onChange(timeframe)
+
+Emits a callback when clicked.
+
+Integrate it into your chart container component (<TradingChart /> or similar).
+
+Trigger a refetch of the chart data whenever the timeframe changes.
+
+Keep existing chart rendering code untouched, only feed it updated data.
+
+🧪 Testing
+
+Verify that chart updates instantly when clicking any timeframe.
+
+Confirm that if an API request fails temporarily, the UI handles it gracefully (loading state / fallback).
+
+Ensure that mobile layout does not overflow horizontally.
+
+🚫 Do NOT change:
+
+Backend routes or DB logic
+
+Existing dashboard layout except for adding this feature
+
+Deposit/withdraw functionality
+
+Admin trading logic
+
+Only update the chart UI and data-fetch behavior.
+
+🎯 Final Outcome
+
+After this change, the user will be able to click:
+
+👉 1m · 15m · 1H · 1D · 1W · 1M
+
+And the chart will update in real time like a real crypto trading platform (e.g., Binance, Bybit, Coinbase Pro).

@@ -16,6 +16,62 @@ ArbiTradeX is a full-stack crypto arbitrage web application that demonstrates a 
 
 ## Recent Changes
 
+### November 24, 2025 - Timeframe Selector Feature
+**Objective:** Add professional Binance-style timeframe selector to crypto trading charts with state persistence across tab switches.
+
+**Changes Implemented:**
+
+1. **TimeframeSelector Component (NEW)**
+   - Created reusable timeframe selector (`client/src/components/timeframe-selector.tsx`)
+   - Six timeframe options: 1m, 15m, 1H, 1D, 1W, 1M
+   - Binance-style design:
+     - Pill-shaped buttons with rounded corners
+     - Active state: Yellow/gold (#F3BA2F) background
+     - Inactive state: Muted gray text
+     - Hover effects and smooth transitions
+   - Fully responsive and mobile-friendly
+
+2. **TradingChart Enhancements**
+   - Updated `client/src/components/trading-chart.tsx` to support timeframe selection
+   - Created `getTimeframeConfig()` helper:
+     - 1m: 60 points × 1s = Last 1 minute
+     - 15m: 60 points × 15s = Last 15 minutes
+     - 1H: 60 points × 60s = Last 1 hour
+     - 1D: 48 points × 30min = Last 1 day
+     - 1W: 28 points × 6h = Last 1 week
+     - 1M: 30 points × 24h = Last 1 month
+   - Created `formatTimeLabel()` for timeframe-specific axis labels
+   - Integrated TimeframeSelector component above chart
+   - Dynamic change period label matches selected timeframe
+
+3. **State Persistence Solution**
+   - Lifted timeframe state to dashboard level (`client/src/pages/dashboard.tsx`)
+   - Separate state variables for each chart:
+     - `btcTimeframe`, `ethTimeframe`, `solTimeframe`
+   - TradingChart accepts optional controlled props:
+     - `timeframe`: Current timeframe
+     - `onTimeframeChange`: Callback for timeframe changes
+   - Controlled component pattern with local state fallback
+   - State persists when switching between chart tabs
+
+**Testing:**
+- Comprehensive E2E test passed successfully
+- Verified timeframe selector on all charts (BTC, ETH, SOL)
+- Confirmed all six timeframe buttons work correctly
+- Tested state persistence across tab switches:
+  - Set BTC to 1M, ETH to 1D, SOL to 15m
+  - Rapid tab switching confirmed all selections preserved
+- Charts update instantly when clicking timeframes
+- Independent timeframe state per chart verified
+
+**Technical Implementation:**
+- TypeScript types for timeframe values
+- Helper functions for timeframe calculation and formatting
+- Controlled component pattern for state management
+- Memoized data generation for performance
+- Data-testid attributes for testing
+- Backward compatibility maintained
+
 ### November 24, 2025 - Binance-Style UI Redesign
 **Objective:** Complete frontend UI/UX redesign to match Binance's professional trading interface while preserving all backend functionality.
 
