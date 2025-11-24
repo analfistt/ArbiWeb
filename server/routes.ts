@@ -53,13 +53,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertUserSchema.parse(req.body);
       
+      // Normalize email (trim + lowercase)
+      const normalizedEmail = validatedData.email.trim().toLowerCase();
+      
       // Check if user already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
         return res.status(400).json({ error: "Email already registered" });
       }
 
-      const user = await storage.createUser(validatedData);
+      const user = await storage.createUser({
+        email: normalizedEmail,
+        password: validatedData.password
+      });
       
       // Generate JWT token
       const token = jwt.sign(
@@ -94,12 +100,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email and password required" });
       }
 
-      const user = await storage.getUserByEmail(email);
+      // Normalize email (trim + lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+      console.log('[LOGIN]', { email: normalizedEmail, found: !!user });
+      
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
       const isValidPassword = bcrypt.compareSync(password, user.password);
+      console.log('[LOGIN]', { email: normalizedEmail, isValid: isValidPassword });
+      
       if (!isValidPassword) {
         return res.status(401).json({ error: "Invalid credentials" });
       }

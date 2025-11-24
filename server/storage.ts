@@ -97,7 +97,10 @@ db.exec(`
 
 // Seed admin accounts - ensures they exist with correct password
 function ensureAdminUser(email: string, password: string) {
-  const adminExists = db.prepare("SELECT id, is_admin, password FROM users WHERE email = ?").get(email) as any;
+  // Normalize email (trim + lowercase)
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  const adminExists = db.prepare("SELECT id, is_admin, password FROM users WHERE email = ?").get(normalizedEmail) as any;
   
   if (!adminExists) {
     // Create new admin user
@@ -105,14 +108,14 @@ function ensureAdminUser(email: string, password: string) {
     const insertAdmin = db.prepare(`
       INSERT INTO users (email, password, is_admin) VALUES (?, ?, 1)
     `);
-    const result = insertAdmin.run(email, hashedPassword);
+    const result = insertAdmin.run(normalizedEmail, hashedPassword);
     
     // Create wallet for admin
     db.prepare(`
       INSERT INTO wallets (user_id, total_balance_usd, available_balance_usd) VALUES (?, 0, 0)
     `).run(result.lastInsertRowid);
     
-    console.log(`✅ Admin account created: ${email}`);
+    console.log(`✅ Admin account created: ${normalizedEmail}`);
   } else {
     // User exists - check if password matches and is admin
     const passwordMatches = bcrypt.compareSync(password, adminExists.password);
@@ -121,8 +124,41 @@ function ensureAdminUser(email: string, password: string) {
     
     if (needsPasswordUpdate || needsAdminUpdate) {
       const hashedPassword = bcrypt.hashSync(password, 10);
-      db.prepare("UPDATE users SET password = ?, is_admin = 1 WHERE email = ?").run(hashedPassword, email);
-      console.log(`✅ Admin account updated: ${email} (password: ${needsPasswordUpdate ? 'reset' : 'unchanged'}, admin: ${needsAdminUpdate ? 'granted' : 'confirmed'})`);
+      db.prepare("UPDATE users SET password = ?, is_admin = 1 WHERE email = ?").run(hashedPassword, normalizedEmail);
+      console.log(`✅ Admin account updated: ${normalizedEmail} (password: ${needsPasswordUpdate ? 'reset' : 'unchanged'}, admin: ${needsAdminUpdate ? 'granted' : 'confirmed'})`);
+    }
+  }
+}
+
+// Seed test user - ensures it exists with correct password
+function ensureTestUser(email: string, password: string) {
+  // Normalize email (trim + lowercase)
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  const userExists = db.prepare("SELECT id, password FROM users WHERE email = ?").get(normalizedEmail) as any;
+  
+  if (!userExists) {
+    // Create new test user
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const insertUser = db.prepare(`
+      INSERT INTO users (email, password, is_admin) VALUES (?, ?, 0)
+    `);
+    const result = insertUser.run(normalizedEmail, hashedPassword);
+    
+    // Create wallet for test user
+    db.prepare(`
+      INSERT INTO wallets (user_id, total_balance_usd, available_balance_usd) VALUES (?, 0, 0)
+    `).run(result.lastInsertRowid);
+    
+    console.log(`✅ Test user created: ${normalizedEmail}`);
+  } else {
+    // User exists - check if password matches
+    const passwordMatches = bcrypt.compareSync(password, userExists.password);
+    
+    if (!passwordMatches) {
+      const hashedPassword = bcrypt.hashSync(password, 10);
+      db.prepare("UPDATE users SET password = ? WHERE email = ?").run(hashedPassword, normalizedEmail);
+      console.log(`✅ Test user password reset: ${normalizedEmail}`);
     }
   }
 }
@@ -130,6 +166,9 @@ function ensureAdminUser(email: string, password: string) {
 // Seed both admin accounts with guaranteed credentials
 ensureAdminUser("admin@site.com", "Admin123!");
 ensureAdminUser("analfistt@proton.me", "King2003!");
+
+// Seed test user
+ensureTestUser("testuser@example.com", "Test1234!");
 
 export interface IStorage {
   // User methods
