@@ -1,0 +1,93 @@
+📌 Prompt for Replit AI (Fix Login 401 Unauthorized in Deployment + Preview)
+
+I already have a full-stack crypto arbitrage web app.
+Login worked previously, but after UI redesign and deployment updates, login fails and I get:
+
+POST /api/auth/login → 401 Unauthorized
+Failed to load resource: the server responded with a status of 401
+
+
+The problem happens in production and Replit Preview, not only in local dev.
+
+🎯 Fix Requirements
+
+🔧 Fix authentication requests so they work in both Deployment and Preview.
+
+Required Changes:
+
+In the frontend, update the API client (fetch/axios) for auth requests to ensure:
+
+Correct BASE_URL detection:
+
+const API_BASE =
+  window.location.hostname.includes("replit.app")
+    ? `${window.location.protocol}//${window.location.host}/api`
+    : "http://localhost:3000/api";
+
+
+Ensure login/signup requests send credentials/cookies:
+For fetch:
+
+fetch(`${API_BASE}/auth/login`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  credentials: "include",  // VERY important
+  body: JSON.stringify({ email, password }),
+})
+
+
+For axios (if used):
+
+axios.defaults.withCredentials = true;
+
+
+Ensure backend uses cors({ origin: true, credentials: true }).
+
+If the backend sets a cookie token:
+
+It must include SameSite=None and Secure for HTTPS in Replit:
+
+res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,         // required on replit HTTPS
+  sameSite: "none",     // important!
+});
+
+
+If JWT authorization headers are used instead of cookies:
+
+Make sure the frontend stores and sends back the token on every protected request.
+
+🔐 Do NOT break existing authentication logic
+
+Keep the same database users.
+
+Do not create new accounts.
+
+Only fix the request/response + cookie/JWT settings.
+
+🧪 Test After Changes
+
+Sign in using an existing user.
+
+Confirm:
+
+Redirect to dashboard works.
+
+No 401 Unauthorized.
+
+Cookies/JWT are present in DevTools → Application → Cookies.
+
+📌 Additional Rule
+
+Do NOT remove or modify UI styling work that has already been done.
+
+Only fix auth logic + CORS/cookies/BASE_URL.
+
+🛑 If the app still returns 401 after login:
+
+Print console.log(req.headers) in the login route and show if the cookie is missing.
+
+Do not strip authentication from WebSocket logic.
