@@ -3,9 +3,9 @@ import {
   createChart, 
   IChartApi, 
   ISeriesApi, 
-  CandlestickData, 
+  LineData, 
   UTCTimestamp,
-  CandlestickSeries
+  AreaSeries
 } from "lightweight-charts";
 
 export interface OHLCData {
@@ -25,7 +25,7 @@ interface CandlestickChartProps {
 export function CandlestickChart({ data, assetSymbol, height = 280 }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const areaSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
 
   // Asset-specific colors
   const ASSET_COLORS = {
@@ -75,18 +75,18 @@ export function CandlestickChart({ data, assetSymbol, height = 280 }: Candlestic
       },
     });
 
-    // Add candlestick series with green/red styling (v5 API)
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#10B981", // Green for bullish candles
-      downColor: "#EF4444", // Red for bearish candles
-      borderUpColor: "#10B981",
-      borderDownColor: "#EF4444",
-      wickUpColor: "#10B981",
-      wickDownColor: "#EF4444",
+    // Add area series (line with gradient fill underneath)
+    const areaSeries = chart.addSeries(AreaSeries, {
+      lineColor: accentColor,
+      topColor: `${accentColor}40`, // 25% opacity for gradient top
+      bottomColor: `${accentColor}00`, // 0% opacity for gradient bottom
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
     });
 
     chartRef.current = chart;
-    candlestickSeriesRef.current = candlestickSeries;
+    areaSeriesRef.current = areaSeries;
 
     // Handle resize
     const handleResize = () => {
@@ -107,18 +107,15 @@ export function CandlestickChart({ data, assetSymbol, height = 280 }: Candlestic
 
   // Update data when it changes
   useEffect(() => {
-    if (!candlestickSeriesRef.current || !data.length) return;
+    if (!areaSeriesRef.current || !data.length) return;
 
-    // Convert OHLC data to lightweight-charts format
-    const chartData: CandlestickData[] = data.map((candle) => ({
+    // Convert OHLC data to line data (using close price)
+    const chartData: LineData[] = data.map((candle) => ({
       time: Math.floor(candle.time / 1000) as UTCTimestamp, // Convert to seconds
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
+      value: candle.close, // Use close price for the line
     }));
 
-    candlestickSeriesRef.current.setData(chartData);
+    areaSeriesRef.current.setData(chartData);
 
     // Fit content to visible range
     if (chartRef.current) {
