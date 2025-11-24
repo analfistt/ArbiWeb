@@ -28,11 +28,14 @@ Preferred communication style: Simple, everyday language.
 - Client-side routing via Wouter for lightweight navigation
 - Form management through react-hook-form with Zod validation
 
-**Design System:**
-- Typography: Inter (body/UI) and Space Grotesk (headlines) from Google Fonts
-- Custom TailwindCSS configuration with HSL color system supporting light/dark modes
+**Design System (Premium Fintech):**
+- Typography: Inter font with OpenType features (tabular numbers via font-feature-settings: "tnum" 1, "lnum" 1)
+- Dark mode enforced by default via `class="dark"` on HTML element in index.html
+- Premium color palette: Very dark navy backgrounds (#050915), dark slate cards (#0F172A), finance gold accent (#F3BA2F)
+- Modern border radii: 12px (buttons/inputs), 16px (cards), 8px (badges)
+- Custom TailwindCSS configuration with enhanced spacing scale, premium shadows (shadow-glow for gold accent)
+- Professional fintech aesthetic inspired by Binance/Coinbase Pro with refined interactions (150ms transitions)
 - Responsive layouts with mobile-first approach
-- Fintech-inspired design following Binance/Coinbase Pro aesthetics for trading UI
 
 **State Management:**
 - TanStack Query for server state management and caching
