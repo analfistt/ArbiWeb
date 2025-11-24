@@ -50,7 +50,8 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <nav className="border-b">
+      {/* Minimal Top Nav */}
+      <nav className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/30">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center space-x-2 cursor-pointer">
@@ -59,23 +60,28 @@ export default function Signup() {
             </div>
           </Link>
           <Link href="/login">
-            <Button variant="ghost" data-testid="button-sign-in">Sign In</Button>
+            <Button variant="outline" data-testid="button-sign-in">Sign In</Button>
           </Link>
         </div>
       </nav>
 
+      {/* Centered Signup Card - Binance Style */}
       <div className="flex-1 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-display font-bold">Create an account</CardTitle>
-            <CardDescription>
+        <Card className="w-full max-w-md shadow-2xl border-border">
+          <CardHeader className="space-y-1 text-center pb-8">
+            <CardTitle className="text-3xl font-display font-bold tracking-tight">
+              Create an account
+            </CardTitle>
+            <CardDescription className="text-base">
               Start profiting from crypto arbitrage today
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -83,11 +89,14 @@ export default function Signup() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="h-11"
                   data-testid="input-email"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -95,11 +104,14 @@ export default function Signup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="h-11"
                   data-testid="input-password"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="text-sm font-medium">
+                  Confirm Password
+                </Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -107,22 +119,23 @@ export default function Signup() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  className="h-11"
                   data-testid="input-confirm-password"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 text-base font-semibold"
                 disabled={isLoading}
                 data-testid="button-submit"
               >
                 {isLoading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
-            <div className="mt-4 text-center text-sm text-muted-foreground">
+            <div className="mt-6 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link href="/login">
-                <a className="text-primary hover:underline" data-testid="link-sign-in">
+                <a className="text-primary hover:text-primary/90 font-medium transition-colors" data-testid="link-sign-in">
                   Sign in
                 </a>
               </Link>

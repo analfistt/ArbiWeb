@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownLeft, 
-  LogOut, User, ArrowLeftRight, Bell, Settings, Activity, BarChart3 
+  Activity, BarChart3, ArrowLeftRight 
 } from "lucide-react";
 import { DepositDialog } from "@/components/deposit-dialog";
 import { WithdrawDialog } from "@/components/withdraw-dialog";
 import { TradingChart } from "@/components/trading-chart";
+import { TopNav } from "@/components/top-nav";
 import { useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -258,11 +259,7 @@ export default function Dashboard() {
   if (isDashboardLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <nav className="border-b border-border bg-card">
-          <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
-            <Skeleton className="h-6 w-32" />
-          </div>
-        </nav>
+        <TopNav />
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[1, 2, 3, 4].map((i) => (
@@ -291,28 +288,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Binance Style */}
-      <nav className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Activity className="h-6 w-6 text-primary" />
-            <span className="font-bold text-xl">ArbiTradeX</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" data-testid="button-notifications">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" data-testid="button-settings">
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" data-testid="button-profile">
-              <User className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={logout} data-testid="button-logout">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <TopNav />
 
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {/* Row 1: KPI Summary Cards */}
