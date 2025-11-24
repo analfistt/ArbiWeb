@@ -1,43 +1,87 @@
-# Design Guidelines: Crypto Arbitrage Trading Platform
+# Design Guidelines: Crypto Arbitrage Trading Platform (Premium Edition)
 
 ## Design Approach
 
-**Selected Approach:** Fintech Platform Reference with Modern Trading Dashboard
-- **Primary References:** Binance, Coinbase Pro, Kraken (for dashboard/trading UI)
+**Selected Approach:** Premium Fintech Platform with Professional Trading Dashboard
+- **Primary References:** Binance, Coinbase Pro, Robinhood (for professional trading UI)
 - **Secondary References:** Stripe, Plaid (for clean fintech aesthetic)
-- **Landing Page Inspiration:** OddsJam structure with crypto/fintech visual treatment
+- **Visual Quality:** Enterprise-grade SaaS platform with premium typography and refined interactions
 
 **Core Principles:**
-1. Data clarity and hierarchy for trading information
-2. Professional trust-building for financial platform
-3. Efficient information density without clutter
-4. Clear visual distinction between public and authenticated areas
+1. **Premium Typography:** Inter font with OpenType features (tabular numbers, ligatures)
+2. **Refined Spacing:** Generous whitespace, larger touch targets, professional hierarchy
+3. **Subtle Interactions:** Smooth transitions (150ms), gold glow effects, hover shadows
+4. **Modern Styling:** 14-20px border radius, thin 1px borders, elegant shadows
+5. **Data Clarity:** Monospace numbers, uppercase table headers, color-coded P/L
 
 ---
 
-## Typography System
+## Premium Typography System
 
 **Font Stack:**
 - **Primary:** Inter (Google Fonts) - body text, data tables, UI elements
+  - Font weights: 400 (regular), 500 (medium), 600 (semibold), 700 (bold)
+  - OpenType features: Kerning, ligatures, tabular/lining numbers
 - **Display:** Space Grotesk (Google Fonts) - headlines, hero sections, large numbers
+- **Monospace:** Roboto Mono - financial data, numeric tables
+
+**OpenType Features:**
+```css
+font-feature-settings: "kern" 1, "liga" 1; /* Body text */
+font-feature-settings: "tnum" 1, "lnum" 1; /* Financial numbers */
+font-variant-numeric: tabular-nums lining-nums; /* Tables */
+```
 
 **Type Scale:**
-- Hero Headlines: 4xl to 6xl (48-60px), font-weight-700
-- Section Headers: 3xl to 4xl (36-48px), font-weight-700
-- Card Titles: xl to 2xl (20-24px), font-weight-600
+- Hero Headlines: 5xl to 6xl (48-60px), font-weight-700, letter-spacing: -0.025em
+- Section Headers: 4xl to 5xl (36-48px), font-weight-700, letter-spacing: -0.020em
+- Subsection Headings: 3xl to 4xl (30-36px), font-weight-700, letter-spacing: -0.015em
+- Card Titles: xl to 2xl (20-24px), font-weight-600, tracking-tight
 - Body Text: base to lg (16-18px), font-weight-400
+- Balance Displays: 3xl to 4xl (30-36px), font-weight-700, tabular-nums, letter-spacing: -0.02em
 - Data/Numbers: lg to xl (18-20px), font-weight-600, tabular-nums
-- Captions/Labels: sm (14px), font-weight-500, uppercase tracking-wide for labels
+- Table Headers: xs (12px), font-weight-600, uppercase, letter-spacing: 0.05em
+- Captions/Labels: sm (14px), font-weight-500
+
+---
+
+## Premium Color Palette
+
+**Dark Mode (Primary):**
+- **Backgrounds:**
+  - Main: `#050915` (222° 84% 2%) - Very dark navy, professional trading environment
+  - Card: `#0F172A` (222° 47% 6%) - Card backgrounds
+  - Sidebar: `#0F172A` - Matching card backgrounds
+  - Elevated: `#111827` (222° 32% 9%) - Sidebar accents
+- **Borders:**
+  - Primary: `#1E293B` (220° 27% 12%) - Subtle, thin 1px borders
+- **Text:**
+  - Primary: `#F8FAFC` (210° 20% 98%) - High contrast white
+  - Secondary: `#94A3B8` (215° 20% 65%) - Muted text
+- **Accents:**
+  - Finance Gold: `#F3BA2F` (45° 96% 57%) - Primary CTA, highlights
+  - Profit Green: `#16A34A` (142° 71% 45%) - Positive P/L
+  - Loss Red: `#DC2626` (0° 72% 51%) - Negative P/L
+
+**Light Mode (Secondary):**
+- Standard light backgrounds with gold accent (#F3BA2F)
+- Maintains same accent colors for consistency
+
+**Shadows & Glows:**
+- **Hover shadows:** Subtle 0.10-0.15 opacity, soft depth
+- **Gold glow:** `0px 0px 20px 0px hsl(45 96% 57% / 0.30)` on primary buttons
+- **Premium shadow:** Multi-layer depth with 0.20-0.30 opacity
 
 ---
 
 ## Layout System
 
-**Spacing Primitives:** Tailwind units of 4, 6, 8, 12, 16, 20, 24
-- Component padding: p-6 to p-8
+**Spacing Primitives:** Enhanced Tailwind spacing
+- Component padding: p-5 to p-6 (20-24px for better breathing room)
 - Section padding: py-16 to py-24
-- Card spacing: space-y-6
+- Card spacing: space-y-6 to space-y-8
 - Grid gaps: gap-6 to gap-8
+- Large spacing: 18, 112, 128 (custom values for hero sections)
 
 **Container Widths:**
 - Landing page sections: max-w-7xl mx-auto px-6
@@ -52,38 +96,72 @@
 
 ---
 
-## Component Library
+## Premium Component Library
 
 ### Navigation
 - **Public Nav:** Transparent on hero with blur backdrop, solid on scroll, items right-aligned
-- **Dashboard Nav:** Fixed sidebar (280px) with logo, user profile, main navigation items, logout at bottom
-- **Mobile:** Hamburger menu with slide-out drawer
+- **Dashboard Nav:** Top bar with Activity icon, notifications, settings, profile (icons only)
+- **Mobile:** Responsive with stacked layout
 
-### Cards & Containers
-- **Summary Cards:** Rounded corners (rounded-xl), subtle border, p-6, hover lift effect
-- **Data Cards:** Clean borders, minimal shadows, focus on content hierarchy
-- **Portfolio Cards:** Table-like structure with clear column headers and alternating row backgrounds
+### Cards & Containers (Premium Styling)
+- **Border Radius:** 16px (rounded-card) for main cards, 14px (rounded-md) for nested cards
+- **Borders:** Thin 1px solid #1E293B
+- **Padding:** p-5 (20px) for better spacing
+- **Hover Effect:** Shadow elevation on hover (150ms transition)
+- **Summary Cards:** Large numbers (text-3xl), small icons, muted labels
+- **Data Cards:** Clean hierarchy with tabular numbers
 
-### Buttons
-- **Primary CTA:** Large (px-8 py-4), rounded-lg, prominent on hero and key actions
-- **Secondary:** Outlined variant with transparent background
-- **Hero Buttons:** Blurred background (backdrop-blur-md bg-white/10), no hover blur changes
-- **Icon Buttons:** Square (w-10 h-10), rounded-lg, for table actions
+### Buttons (Premium Styling)
+- **Border Radius:** 12px (rounded-button) for modern look
+- **Typography:** font-semibold (600 weight) for clarity
+- **Transitions:** 150ms ease-out on all properties
+- **Primary (Default):**
+  - Gold background (#F3BA2F)
+  - Gold glow on hover (shadow-glow)
+  - min-h-9 default, min-h-11 for large
+- **Secondary:** Outlined variant with subtle borders
+- **Ghost:** Transparent with hover elevation
+- **Sizes:**
+  - Small: min-h-8, px-3, text-xs
+  - Default: min-h-9, px-4, text-sm
+  - Large: min-h-11, px-8, text-base
 
-### Data Display
-- **Tables:** Full-width, sticky headers, alternating row backgrounds (bg-gray-50/50), right-align numbers
-- **Stat Numbers:** Large (text-3xl to text-4xl), tabular-nums, with small label above
-- **P/L Indicators:** Inline badges with icons (↑↓), distinct treatments for positive/negative
-- **Charts:** Card containers with minimal chrome, full-bleed graphs with axis labels
+### Data Display (Premium Styling)
+- **Tables:**
+  - Headers: uppercase, xs (12px), font-semibold, letter-spacing: 0.05em
+  - Body: text-sm (14px), tabular numbers
+  - Hover: Row elevation with hover-elevate class
+  - Numbers: Right-aligned, monospace font-family
+- **Balance Displays:**
+  - Class: `.balance-display`
+  - Size: text-3xl to text-4xl
+  - Weight: font-bold
+  - Features: tabular-nums, letter-spacing: -0.02em
+- **P/L Indicators:**
+  - Profit: Green (#16A34A) with ▲ icon
+  - Loss: Red (#DC2626) with ▼ icon
+  - Badges for percentages
+- **Charts:** Dark theme with gold/green/red color scheme
 
-### Forms
-- **Input Fields:** Large touch targets (h-12), rounded-lg borders, clear focus states
-- **Labels:** Small caps (text-sm uppercase tracking-wide), above inputs
-- **Validation:** Inline error messages below fields
+### Forms (Premium Styling)
+- **Input Fields:**
+  - Height: h-10 (40px) for comfortable touch targets
+  - Border radius: rounded-button (12px)
+  - Padding: px-4 (16px horizontal)
+  - Transitions: 150ms on focus states
+  - Focus ring: 2px gold ring with 1px offset
+- **Labels:** Positioned above inputs, clear hierarchy
+- **Validation:** Inline error messages with icons
 
-### Badges & Pills
-- **Status Badges:** Small (px-3 py-1), rounded-full, uppercase text-xs
-- **Asset Symbols:** Pill style with icons (BTC, ETH), inline with asset names
+### Badges & Pills (Premium Styling)
+- **Border Radius:** rounded-sm (8px) for modern look
+- **Padding:** px-2.5 py-0.5
+- **Typography:** text-xs, font-semibold
+- **Transitions:** 150ms hover elevation
+- **Variants:**
+  - Default: Gold background (#F3BA2F)
+  - Destructive: Red background (#DC2626)
+  - Secondary: Muted background
 
 ---
 

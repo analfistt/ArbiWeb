@@ -34,6 +34,7 @@ function Router() {
 }
 
 function App() {
+  // Dark mode enabled globally via class="dark" in index.html
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

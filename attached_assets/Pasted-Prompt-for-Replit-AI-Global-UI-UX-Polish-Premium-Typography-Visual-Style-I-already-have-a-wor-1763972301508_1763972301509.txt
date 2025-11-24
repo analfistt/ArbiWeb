@@ -1,0 +1,157 @@
+Prompt for Replit AI (Global UI/UX Polish + Premium Typography & Visual Style)
+
+I already have a working full-stack crypto arbitrage web app.
+Now I want you to improve the global styling and typography across the entire frontend, without changing any backend logic, routes, or database structure.
+
+Goals
+
+Create a premium, professional visual identity, suitable for a trading/finance SaaS (like Binance, Coinbase Pro, or Robinhood).
+
+Apply a global modern typeface, clean spacing, and consistent design language.
+
+No functionality changes — only visual refinement.
+
+Design Requirements
+1. Use a premium font
+
+Replace all fonts with one modern, elegant typeface, such as:
+
+Inter
+
+DM Sans
+
+Plus Jakarta Sans
+
+Sora
+
+Use proper font weights (e.g., 400, 500, 600, 700) and add:
+
+font-feature-settings: "tnum", "lnum";
+
+
+For better numeric alignment on financial data.
+
+Make sure the font is imported globally (CSS or Tailwind config).
+
+2. Apply a consistent design system
+
+Create a global palette and reuse it consistently:
+
+Dark backgrounds: #050915 / #0A0F1E
+
+Card backgrounds: #0F172A / #111827
+
+Lines / borders: #1E293B
+
+Text:
+
+Primary text: #F8FAFC
+
+Secondary muted text: #94A3B8
+
+Accent:
+
+Finance gold: #F3BA2F
+
+Profit: #16A34A
+
+Loss: #DC2626
+
+3. Improve spacing and hierarchy
+
+Apply universal spacing & layout clarity:
+
+Increase white space around sections
+
+Use 16px or 20px base padding
+
+Larger headings for main section titles
+
+Bigger numeric display for balances (e.g., font-size: 2rem–3rem)
+
+4. Modern card styling
+
+All component cards should have:
+
+border-radius: 14px–20px
+
+Thin border 1px solid #1E293B
+
+Subtle shadow (only on hover)
+
+Smooth transitions:
+
+transition: all 0.15s ease-out;
+
+5. Buttons redesign
+
+Upgrade all buttons globally:
+
+Primary buttons:
+
+Gold accent (#F3BA2F)
+
+Slight glow on hover
+
+border-radius: 10px–14px
+
+Bold typography
+
+Secondary buttons:
+
+Outline style, same radius, muted text
+
+6. Table & typography upgrades
+
+For tables (portfolio, arbitrage positions, opportunities):
+
+Use more whitespace
+
+Larger header text with uppercase + tracking modifier
+
+Align numbers right
+
+Profit/Loss always colored:
+
+▲ green for profit
+
+▼ red for loss
+
+Optional enhancement: use monospace numeric font for columns (not for whole app), e.g.:
+
+font-family: 'Roboto Mono', monospace;
+
+7. Global CSS/Tailwind cleanup
+
+Remove conflicting legacy styles
+
+Centralize colors, spacing, shadows, typography in theme config
+
+Ensure mobile responsiveness stays intact
+
+Rules
+
+Do not change backend or API logic.
+
+Do not rename existing classes unless required.
+
+Modify styles globally through:
+
+Tailwind config OR
+
+Global CSS variables + utility classes
+
+Final Outcome
+
+After implementing these upgrades, the site should:
+
+Look clean, premium, and professional
+
+Feel consistent and elegant
+
+Display financial data with clarity and hierarchy
+
+Use a unified modern font everywhere
+
+📌 After completion, do NOT remove existing components.
+Just finish the restyling, and I will request further pages if needed.

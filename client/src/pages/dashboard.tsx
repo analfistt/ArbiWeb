@@ -42,7 +42,7 @@ function KPICard({
   };
 
   return (
-    <Card className="hover-elevate transition-all duration-150">
+    <Card className="transition-all duration-150 hover:shadow-md overflow-visible">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{title}</p>

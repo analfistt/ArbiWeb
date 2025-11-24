@@ -6,9 +6,11 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        lg: "1.25rem", /* 20px - Premium large radius */
+        md: "0.875rem", /* 14px - Premium medium radius */
+        sm: "0.5rem", /* 8px - Premium small radius */
+        button: "0.75rem", /* 12px - Button radius */
+        card: "1rem", /* 16px - Card radius */
       },
       colors: {
         // Flat / base colors (regular buttons)
@@ -85,8 +87,21 @@ export default {
       fontFamily: {
         sans: ["Inter", "var(--font-sans)"],
         serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        mono: ["'Roboto Mono'", "var(--font-mono)"],
         display: ["Space Grotesk", "sans-serif"],
+      },
+      spacing: {
+        '18': '4.5rem',
+        '112': '28rem',
+        '128': '32rem',
+      },
+      boxShadow: {
+        'glow': 'var(--shadow-glow)',
+        'premium': 'var(--shadow-md)',
+      },
+      letterSpacing: {
+        'tighter': '-0.03em',
+        'wide': '0.025em',
       },
       keyframes: {
         "accordion-down": {
