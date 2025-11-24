@@ -1,0 +1,63 @@
+You are editing my existing Replit project of a crypto arbitrage website.
+
+IMPORTANT:
+- Do NOT change anything in the project except the price chart logic and its immediate UI controls.
+- Do NOT touch the login / auth logic, routing, HTML structure outside the chart area, CSS files, or any existing texts.
+- Keep all existing styles, components, and APIs that are already used in the project.
+
+Goal:
+Make the coins price chart truly time-based and always up to date, with selectable time ranges.
+
+Requirements:
+
+1. Time-based historical data
+- The chart must display prices according to their real timestamps.
+- If 4 hours ago the price was different, the chart must show that historical difference for the selected time range.
+- Use the SAME data source / API that the project is already using for coin prices.
+- If the current API already supports historical prices (candles/ohlc), use it with proper parameters (symbol, interval, limit, startTime/endTime).
+- If only current prices are available, implement a simple in-memory (or persisted if already available in the project) time-series buffer that stores [timestamp, price] every time data is fetched, and use that buffer for the chart.
+
+2. Time range selector
+Add a time range selector for the chart with the following options:
+- 24 hours
+- 12 hours
+- 1 hour
+- 30 minutes
+- 15 minutes
+- 1 minute
+
+Implementation details:
+- The selector can be buttons or a dropdown, but must look consistent with the existing design.
+- Default selection can be 1 hour (or the current default used by the project).
+- When the user chooses a range (e.g., 24h), query or filter the data so that the chart only shows data points from “now - selected_range” until “now”.
+- Make sure the chart is fully redrawn or updated when the user switches range.
+
+3. Live updates
+- The chart must keep updating in real time (or at the same interval the app already uses for fetching prices).
+- When a new price arrives:
+  - Add a new data point with the correct timestamp.
+  - Remove old points that are outside the currently selected time range.
+- Do NOT reset or clear the whole chart on every update; only append/remove points as needed so the chart looks smooth.
+
+4. X-axis & formatting
+- The X-axis of the chart must be time-based.
+- Format labels according to the zoom level:
+  - For 1 minute / 15 minutes / 30 minutes / 1 hour: show time (HH:mm or similar).
+  - For 12 hours / 24 hours: show both date and time where needed.
+- Make sure tooltips show exact timestamp and price.
+
+5. Code location & safety
+- Only modify the component / file that manages the price chart and its data fetching logic.
+- If the project uses a library like Chart.js, Recharts, ECharts, etc.:
+  - Reuse the existing chart instance and configuration where possible.
+  - Just adjust the data arrays (labels, datasets) and add the time range selector behavior.
+- Keep all existing props, state names, and function signatures unless absolutely necessary.
+
+6. UX details
+- While loading data for a selected range, show a small loading state only in the chart area (spinner or “Loading…” text).
+- On API error, show a small non-intrusive message near the chart, but do NOT break the app.
+
+Now:
+1. Locate the existing price chart component and its data fetching logic.
+2. Implement the time-based history, range selector (24h, 12h, 1h, 30m, 15m, 1m), and live updates exactly as described above.
+3. Do not change anything else in the project.

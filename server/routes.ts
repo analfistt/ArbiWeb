@@ -188,6 +188,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get historical price data (real-time buffered)
+  app.get("/api/market/history/:symbol", async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const minutes = parseInt(req.query.minutes as string) || 60;
+      
+      const history = priceService.getHistoricalPrices(symbol, minutes);
+      res.json({ history });
+    } catch (error) {
+      console.error("Get history error:", error);
+      res.status(500).json({ error: "Failed to get historical prices" });
+    }
+  });
+
   // ============ Dashboard Routes ============
   
   // Get dashboard data

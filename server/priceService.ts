@@ -20,8 +20,14 @@ interface CandleData {
   volume: number;
 }
 
+interface HistoricalPricePoint {
+  timestamp: number;
+  price: number;
+}
+
 class PriceService {
   private prices: Map<string, PriceData> = new Map();
+  private priceHistory: Map<string, HistoricalPricePoint[]> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly coinGeckoIds = new Map([
     ["BTC", "bitcoin"],
@@ -29,9 +35,11 @@ class PriceService {
     ["SOL", "solana"],
     ["USDT", "tether"],
   ]);
+  private readonly MAX_HISTORY_HOURS = 24; // Keep 24 hours of data
 
   constructor() {
     this.initializePrices();
+    this.initializeHistory();
   }
 
   private initializePrices() {
@@ -47,6 +55,32 @@ class PriceService {
         timestamp: Date.now(),
       });
     });
+  }
+
+  private initializeHistory() {
+    this.coinGeckoIds.forEach((_, symbol) => {
+      this.priceHistory.set(symbol, []);
+    });
+  }
+
+  private addToHistory(symbol: string, price: number, timestamp: number) {
+    const history = this.priceHistory.get(symbol) || [];
+    
+    // Add new data point
+    history.push({ timestamp, price });
+    
+    // Remove data older than MAX_HISTORY_HOURS
+    const cutoffTime = timestamp - (this.MAX_HISTORY_HOURS * 60 * 60 * 1000);
+    const filteredHistory = history.filter(point => point.timestamp >= cutoffTime);
+    
+    this.priceHistory.set(symbol, filteredHistory);
+  }
+
+  getHistoricalPrices(symbol: string, minutes: number): HistoricalPricePoint[] {
+    const history = this.priceHistory.get(symbol.toUpperCase()) || [];
+    const cutoffTime = Date.now() - (minutes * 60 * 1000);
+    
+    return history.filter(point => point.timestamp >= cutoffTime);
   }
 
   async start() {
@@ -73,19 +107,28 @@ class PriceService {
       
       const data = await response.json();
       
+      const now = Date.now();
       this.coinGeckoIds.forEach((coinId, symbol) => {
         const coinData = data[coinId];
         if (coinData) {
+          const price = coinData.usd || 0;
+          const timestamp = (coinData.last_updated_at || now / 1000) * 1000;
+          
           this.prices.set(symbol, {
             symbol,
-            price: coinData.usd || 0,
+            price,
             change24h: 0, // CoinGecko doesn't provide absolute change
             changePercent24h: coinData.usd_24h_change || 0,
             high24h: 0,
             low24h: 0,
             volume24h: coinData.usd_24h_vol || 0,
-            timestamp: (coinData.last_updated_at || Date.now() / 1000) * 1000,
+            timestamp,
           });
+          
+          // Add to historical buffer
+          if (price > 0) {
+            this.addToHistory(symbol, price, timestamp);
+          }
         }
       });
 

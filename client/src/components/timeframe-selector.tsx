@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
 
-// Only include timeframes that CoinGecko accurately provides
-// 1H = hourly candles, 4H = 4-hourly candles, 1D = daily candles
-export type Timeframe = "1H" | "4H" | "1D";
+// Time-based ranges for truly time-based historical charts
+export type Timeframe = "1m" | "15m" | "30m" | "1h" | "12h" | "24h";
 
 interface TimeframeSelectorProps {
   currentTimeframe: Timeframe;
@@ -11,9 +10,12 @@ interface TimeframeSelectorProps {
 }
 
 const TIMEFRAMES: { value: Timeframe; label: string }[] = [
-  { value: "1H", label: "1H" },
-  { value: "4H", label: "4H" },
-  { value: "1D", label: "1D" },
+  { value: "1m", label: "1m" },
+  { value: "15m", label: "15m" },
+  { value: "30m", label: "30m" },
+  { value: "1h", label: "1h" },
+  { value: "12h", label: "12h" },
+  { value: "24h", label: "24h" },
 ];
 
 export function TimeframeSelector({ 
