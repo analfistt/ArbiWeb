@@ -6,6 +6,7 @@ import express, {
   Response,
   NextFunction,
 } from "express";
+import cors from "cors";
 
 import { registerRoutes } from "./routes";
 
@@ -21,6 +22,14 @@ export function log(message: string, source = "express") {
 }
 
 export const app = express();
+
+// Configure CORS to support credentials for authentication
+app.use(cors({
+  origin: true, // Allow all origins in development/preview
+  credentials: true, // Allow credentials (cookies, authorization headers)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 declare module 'http' {
   interface IncomingMessage {

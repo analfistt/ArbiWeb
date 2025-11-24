@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchCurrentUser = async (authToken: string) => {
     try {
       const response = await fetch("/api/auth/me", {
+        credentials: "include",
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -104,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
