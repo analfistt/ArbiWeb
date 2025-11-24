@@ -1,0 +1,84 @@
+Prompt for Replit AI
+
+(Redesign “What Is Crypto Arbitrage?” banner – shorter, more elegant, hero-style)
+
+I already have an info banner/section titled “What Is Crypto Arbitrage?” on the dashboard.
+Right now it looks like a long article (multiple paragraphs, headings and lists).
+I want you to redesign this section into a short, elegant hero-style banner, more like a clean product explanation than a book.
+
+📌 Important:
+
+Do NOT change any backend logic or routes.
+
+Do NOT change other parts of the UI.
+
+Only update this specific info banner component.
+
+1. Layout & Design
+
+Keep it in the same place but change the style to a compact hero card:
+
+Height smaller and tighter (less vertical space).
+
+Left side: short text (title + 2–3 lines + small bullet list).
+
+Right side: the existing icon/graphic or a simple gradient card with an upward arrow.
+
+Background: same dark theme, but slightly highlighted (subtle gradient or glow).
+
+Rounded corners, soft border, small shadow.
+
+Add a small pill label at the top left, e.g.
+Learn · Crypto Arbitrage
+
+Make sure it feels minimal and premium, not like a long article.
+
+2. Replace the text with this shorter copy
+
+Use exactly this text, nicely formatted:
+
+Label (small/pill):
+Learn · Crypto Arbitrage
+
+Title:
+What Is Crypto Arbitrage?
+
+Subtitle (1 short paragraph):
+Crypto arbitrage is a trading strategy that profits from price differences of the same cryptocurrency on different exchanges. You buy where the price is lower and sell where it’s higher, capturing the spread as profit.
+
+Mini example (one line with icon):
+Example: Buy BTC at $85,000 on Kraken and sell it at $85,400 on Binance – the $400 gap is your arbitrage profit (before fees).
+
+3 short bullet points under the subtitle:
+
+No need to predict market direction
+
+Profit from price gaps, not speculation
+
+Commonly seen as lower risk than regular trading
+
+That’s all. No long paragraphs, no separate section titles.
+
+3. Visual polish
+
+Title larger and bold; subtitle slightly muted but clear.
+
+Bullet points in a compact row or short vertical list.
+
+Example line can be inside a small highlighted pill/card with a subtle green accent on the profit part.
+
+Use green accent for the word “profit” or the $400 in the example.
+
+Add a small “X” close button in the top-left corner (as already exists) – keep its behavior.
+
+4. Behavior
+
+The banner should still be dismissible (close button hides it for the session or via state).
+
+No scrolling inside the banner; all content should fit nicely on one view on desktop.
+
+5. Do not touch anything else
+
+Do not change routes, auth, charts, arbitrage logic, etc.
+
+Only modify the JSX/HTML + styles of the existing info banner component and its text.

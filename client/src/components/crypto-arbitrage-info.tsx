@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, TrendingUp, ArrowLeftRight, LineChart } from "lucide-react";
+import { X, TrendingUp, ArrowUpRight } from "lucide-react";
 
 export function CryptoArbitrageInfo() {
   const [isDismissed, setIsDismissed] = useState(false);
@@ -23,12 +23,15 @@ export function CryptoArbitrageInfo() {
   if (isDismissed) return null;
 
   return (
-    <Card className="relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm" data-testid="crypto-arbitrage-info">
+    <Card 
+      className="relative overflow-hidden border-border/50 bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm shadow-lg" 
+      data-testid="crypto-arbitrage-info"
+    >
       {/* Dismiss Button */}
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-3 right-3 h-8 w-8 text-muted-foreground hover:text-foreground"
+        className="absolute top-3 right-3 h-7 w-7 text-muted-foreground hover:text-foreground z-10"
         onClick={handleDismiss}
         data-testid="button-dismiss-info"
       >
@@ -36,103 +39,62 @@ export function CryptoArbitrageInfo() {
       </Button>
 
       <div className="p-6 md:p-8">
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row items-center gap-8">
           {/* Left: Content */}
           <div className="flex-1 space-y-4">
-            {/* Label Badge */}
-            <Badge variant="outline" className="mb-2 border-primary/30 text-primary bg-primary/5">
-              <LineChart className="w-3 h-3 mr-1.5" />
-              Learn
+            {/* Pill Label */}
+            <Badge 
+              variant="outline" 
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium border-primary/40 text-primary bg-primary/10 rounded-full"
+              data-testid="badge-learn"
+            >
+              Learn · Crypto Arbitrage
             </Badge>
 
             {/* Title */}
-            <h2 className="font-display font-bold text-2xl md:text-3xl text-foreground">
+            <h2 className="font-bold text-3xl md:text-4xl text-foreground leading-tight">
               What Is Crypto Arbitrage?
             </h2>
 
-            {/* Introduction */}
-            <p className="text-base text-muted-foreground leading-relaxed">
-              Crypto arbitrage is a trading strategy that aims to profit from <strong className="text-foreground font-semibold">price differences</strong> of the same cryptocurrency across multiple exchanges. Instead of predicting market direction, traders exploit temporary price gaps by buying a coin where it's cheaper and selling it where it's more expensive, capturing the difference as profit.
+            {/* Subtitle */}
+            <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
+              Crypto arbitrage is a trading strategy that profits from price differences of the same cryptocurrency on different exchanges. You buy where the price is lower and sell where it's higher, capturing the spread as profit.
             </p>
 
-            {/* Example Section */}
-            <div className="bg-muted/30 border border-border/50 rounded-lg p-4">
-              <h3 className="font-semibold text-lg text-foreground mb-2 flex items-center gap-2">
-                <ArrowLeftRight className="w-4 h-4 text-primary" />
-                Example
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                If Bitcoin is priced at <strong className="text-foreground font-semibold">$85,000 on Kraken</strong> but <strong className="text-foreground font-semibold">$85,400 on Binance</strong>, a trader can buy Bitcoin for $85,000 on Kraken and sell it for $85,400 on Binance. The profit is the <strong className="text-[hsl(var(--success))] font-semibold">$400 difference</strong> (before fees).
-              </p>
+            {/* Example - Highlighted Card */}
+            <div className="inline-flex items-center gap-2 bg-muted/40 border border-border/50 rounded-lg px-4 py-2.5 text-sm">
+              <span className="text-muted-foreground">
+                <strong className="text-foreground">Example:</strong> Buy BTC at $85,000 on Kraken and sell it at $85,400 on Binance – the{" "}
+                <strong className="text-[hsl(var(--success))]">$400 gap</strong> is your arbitrage profit (before fees).
+              </span>
             </div>
 
-            {/* Why Section */}
-            <div>
-              <h3 className="font-semibold text-lg text-foreground mb-2">
-                Why Do Price Differences Occur?
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Cryptocurrency prices are not perfectly synchronized between exchanges. Variations in supply and demand, market liquidity, and regional activity create short-lived price differences that arbitrage traders can take advantage of.
-              </p>
-            </div>
-
-            {/* Types Section */}
-            <div>
-              <h3 className="font-semibold text-lg text-foreground mb-3">
-                Main Types of Crypto Arbitrage
-              </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold mt-0.5">•</span>
-                  <span>
-                    <strong className="text-foreground font-semibold">Cross-Exchange Arbitrage:</strong> Buy on one exchange and sell on another at a higher price.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold mt-0.5">•</span>
-                  <span>
-                    <strong className="text-foreground font-semibold">Triangular Arbitrage:</strong> Profit from exchange rate differences between three cryptocurrencies within the same exchange (for example BTC → ETH → XRP → BTC).
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold mt-0.5">•</span>
-                  <span>
-                    <strong className="text-foreground font-semibold">Futures Arbitrage:</strong> Earn from price gaps between spot prices and futures contracts.
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Benefits Section */}
-            <div>
-              <h3 className="font-semibold text-lg text-foreground mb-3">
-                Benefits
-              </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <span className="text-[hsl(var(--success))] font-bold mt-0.5">•</span>
-                  <span>You don't need to predict market trends.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[hsl(var(--success))] font-bold mt-0.5">•</span>
-                  <span>Profit comes from price gaps, not speculation.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[hsl(var(--success))] font-bold mt-0.5">•</span>
-                  <span>Often considered less risky compared to traditional trading strategies.</span>
-                </li>
-              </ul>
-            </div>
+            {/* 3 Bullet Points - Compact Row/List */}
+            <ul className="flex flex-col gap-2 text-sm text-muted-foreground pt-2">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+                <span>No need to predict market direction</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+                <span>Profit from price gaps, not speculation</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+                <span>Commonly seen as lower risk than regular trading</span>
+              </li>
+            </ul>
           </div>
 
-          {/* Right: Illustration (Optional) */}
-          <div className="hidden lg:flex items-start justify-center lg:w-64 pt-8">
+          {/* Right: Decorative Graphic */}
+          <div className="hidden lg:flex items-center justify-center lg:w-56 flex-shrink-0">
             <div className="relative">
-              {/* Decorative Trading Icon */}
-              <div className="relative w-48 h-48 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 flex items-center justify-center">
-                <TrendingUp className="w-24 h-24 text-primary opacity-20" />
-                <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/30 flex items-center justify-center">
-                  <ArrowLeftRight className="w-8 h-8 text-[hsl(var(--success))]" />
+              {/* Gradient Card with Upward Arrow */}
+              <div className="relative w-40 h-40 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 flex items-center justify-center shadow-xl">
+                <TrendingUp className="w-20 h-20 text-primary/30" />
+                {/* Upward Arrow Badge */}
+                <div className="absolute -top-3 -right-3 w-14 h-14 rounded-full bg-[hsl(var(--success))]/20 border-2 border-[hsl(var(--success))]/40 flex items-center justify-center shadow-lg">
+                  <ArrowUpRight className="w-7 h-7 text-[hsl(var(--success))]" />
                 </div>
               </div>
             </div>
