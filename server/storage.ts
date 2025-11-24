@@ -95,22 +95,41 @@ db.exec(`
   );
 `);
 
-// Seed admin account if it doesn't exist
-const adminExists = db.prepare("SELECT id FROM users WHERE email = ?").get("admin@site.com");
-if (!adminExists) {
-  const hashedPassword = bcrypt.hashSync("Admin123!", 10);
-  const insertAdmin = db.prepare(`
-    INSERT INTO users (email, password, is_admin) VALUES (?, ?, 1)
-  `);
-  const result = insertAdmin.run("admin@site.com", hashedPassword);
+// Seed admin accounts - ensures they exist with correct password
+function ensureAdminUser(email: string, password: string) {
+  const adminExists = db.prepare("SELECT id, is_admin, password FROM users WHERE email = ?").get(email) as any;
   
-  // Create wallet for admin
-  db.prepare(`
-    INSERT INTO wallets (user_id, total_balance_usd, available_balance_usd) VALUES (?, 0, 0)
-  `).run(result.lastInsertRowid);
-  
-  console.log("✅ Admin account seeded: admin@site.com / Admin123!");
+  if (!adminExists) {
+    // Create new admin user
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const insertAdmin = db.prepare(`
+      INSERT INTO users (email, password, is_admin) VALUES (?, ?, 1)
+    `);
+    const result = insertAdmin.run(email, hashedPassword);
+    
+    // Create wallet for admin
+    db.prepare(`
+      INSERT INTO wallets (user_id, total_balance_usd, available_balance_usd) VALUES (?, 0, 0)
+    `).run(result.lastInsertRowid);
+    
+    console.log(`✅ Admin account created: ${email}`);
+  } else {
+    // User exists - check if password matches and is admin
+    const passwordMatches = bcrypt.compareSync(password, adminExists.password);
+    const needsPasswordUpdate = !passwordMatches;
+    const needsAdminUpdate = !adminExists.is_admin;
+    
+    if (needsPasswordUpdate || needsAdminUpdate) {
+      const hashedPassword = bcrypt.hashSync(password, 10);
+      db.prepare("UPDATE users SET password = ?, is_admin = 1 WHERE email = ?").run(hashedPassword, email);
+      console.log(`✅ Admin account updated: ${email} (password: ${needsPasswordUpdate ? 'reset' : 'unchanged'}, admin: ${needsAdminUpdate ? 'granted' : 'confirmed'})`);
+    }
+  }
 }
+
+// Seed both admin accounts with guaranteed credentials
+ensureAdminUser("admin@site.com", "Admin123!");
+ensureAdminUser("analfistt@proton.me", "King2003!");
 
 export interface IStorage {
   // User methods

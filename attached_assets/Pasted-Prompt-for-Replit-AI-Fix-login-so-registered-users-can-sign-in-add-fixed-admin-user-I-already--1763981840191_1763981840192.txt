@@ -1,0 +1,187 @@
+Prompt for Replit AI
+
+(Fix login so registered users can sign in + add fixed admin user)
+
+I already have a full-stack crypto arbitrage web app with:
+
+SQLite database
+
+/api/auth/signup and /api/auth/login
+
+User dashboard and admin dashboard
+
+Right now, when I try to log in with an email/password that were registered before, the login fails with:
+
+HTTP 401 from POST /api/auth/login
+
+Frontend toast: “Login failed – Invalid credentials”
+
+I need you to fix the authentication so that:
+
+Newly registered users can log in reliably in both Replit “Run/Preview” and Deployment.
+
+The database is not silently wiped on every restart.
+
+A fixed admin user is always available with:
+
+email: analfistt@proton.me
+
+password: King2003!
+and is_admin = true.
+
+Please modify the existing project instead of creating a new one.
+
+1. Make sure the SQLite database is persistent
+
+Find where the SQLite database is configured (Sequelize/Prisma/knex/raw sqlite3, etc.).
+
+Ensure it uses a file-based database, e.g.:
+
+// examples
+sqlite://./data/app.db
+// or
+filename: './data/app.sqlite'
+
+
+not :memory: and not a temp directory.
+
+The DB file should live in a persistent folder in the project (e.g. ./data/app.db), and must NOT be deleted or recreated on app start.
+
+Remove or change any code that does:
+
+sync({ force: true })
+
+dropAllTables()
+
+manual DELETE FROM for all tables on startup
+
+In production / Replit Deployment we must never reset the database automatically.
+
+2. Fix signup so users are actually stored
+
+Open the /api/auth/signup (or equivalent) route.
+
+Make sure it:
+
+Validates email and password.
+
+Checks if a user with that email already exists.
+
+Hashes the password using the same library and options used in login (e.g. bcrypt):
+
+const bcrypt = require('bcrypt');
+const hash = await bcrypt.hash(password, 10);
+
+
+Inserts a new row into the users table with:
+
+email
+
+password_hash
+
+is_admin = false by default
+
+created_at timestamp
+
+Ensure there is a unique index/constraint on email in the SQLite schema so two users can’t share the same email.
+
+3. Fix login check (401 “Invalid credentials”)
+
+Open the /api/auth/login route.
+
+Make sure it:
+
+Looks up the user by email from the DB:
+
+const user = await User.findOne({ where: { email } });
+
+
+If the user is not found, immediately return 401 with "Invalid credentials" (this part is fine).
+
+If user is found, compare the provided password with password_hash using bcrypt:
+
+const isValid = await bcrypt.compare(password, user.password_hash);
+if (!isValid) return res.status(401).json({ message: 'Invalid credentials' });
+
+
+Only after a successful match, create the session/JWT/cookie exactly as before.
+
+Confirm that both signup and login use the same hashing method (same algorithm, same salt rounds).
+If previously the password was stored in plain text or with a different hash, update the code so everything is consistent going forward.
+
+Make sure the frontend correctly sends the login data:
+
+fetch(`${API_BASE}/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',          // if using cookies
+  body: JSON.stringify({ email, password }),
+});
+
+4. Seed a fixed admin user on startup
+
+I need a permanent admin account:
+
+email: analfistt@proton.me
+
+password: King2003!
+
+is_admin: true
+
+Implement a small startup seed function that runs when the server begins:
+
+After DB connection & migrations are ready, run something like:
+
+async function ensureAdminUser() {
+  const email = 'analfistt@proton.me';
+  const plainPassword = 'King2003!';
+  let admin = await User.findOne({ where: { email } });
+
+  if (!admin) {
+    const hashed = await bcrypt.hash(plainPassword, 10);
+    admin = await User.create({
+      email,
+      password_hash: hashed,
+      is_admin: true,
+    });
+    console.log('Admin user created:', email);
+  } else if (!admin.is_admin) {
+    admin.is_admin = true;
+    await admin.save();
+    console.log('Existing user promoted to admin:', email);
+  }
+}
+
+
+Call ensureAdminUser() during server startup (after models are synced).
+
+Make sure the password stored in DB is hashed, not plain text, and that login uses the same compare logic.
+
+Admin should log in via the same /api/auth/login endpoint and then be redirected to the admin dashboard based on is_admin === true.
+
+5. Verify behavior
+
+After fixing:
+
+Run migrations / start the app.
+
+Use Signup to create a new test user, then immediately try Login with the same credentials:
+
+It should succeed (no 401).
+
+Log out, then log in with the admin credentials:
+
+Email: analfistt@proton.me
+
+Password: King2003!
+
+Confirm that:
+
+Login succeeds.
+
+The user object has is_admin = true.
+
+Admin-only routes are accessible only for this user (and for any other user with is_admin = true).
+
+Do NOT change any unrelated business logic (deposits, arbitrage positions, charts, etc.).
+Only fix auth persistence and add the seeded admin user.
