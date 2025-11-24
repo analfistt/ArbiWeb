@@ -28,6 +28,8 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
   const [lastUpdate, setLastUpdate] = useState(Date.now());
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const maxReconnectAttempts = 5; // Limit reconnect attempts
 
   // Fetch initial prices from REST API
   useEffect(() => {
@@ -71,6 +73,7 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
       ws.onopen = () => {
         console.log("✅ Price WebSocket connected");
         setIsConnected(true);
+        reconnectAttemptsRef.current = 0; // Reset attempts on successful connection
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;
@@ -99,16 +102,28 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
       };
 
       ws.onclose = () => {
-        console.log("🔌 Price WebSocket disconnected");
         setIsConnected(false);
         
-        // Schedule reconnect
-        if (!reconnectTimeoutRef.current) {
-          console.log("⏱️  Reconnecting in 5 seconds...");
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectTimeoutRef.current = null;
-            connectWebSocket();
-          }, 5000);
+        // Only attempt reconnect if under max attempts
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current += 1;
+          
+          // Exponential backoff: 5s, 10s, 20s, 40s, 60s
+          const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current - 1), 60000);
+          
+          if (reconnectAttemptsRef.current === 1) {
+            console.log("🔌 WebSocket disconnected");
+          }
+          console.log(`⏱️  Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay / 1000}s...`);
+          
+          if (!reconnectTimeoutRef.current) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectTimeoutRef.current = null;
+              connectWebSocket();
+            }, delay);
+          }
+        } else {
+          console.warn("⚠️  Max WebSocket reconnect attempts reached. App will continue using HTTP polling.");
         }
       };
     };

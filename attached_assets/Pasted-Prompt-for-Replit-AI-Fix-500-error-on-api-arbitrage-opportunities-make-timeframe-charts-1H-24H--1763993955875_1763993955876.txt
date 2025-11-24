@@ -1,0 +1,162 @@
+Prompt for Replit AI
+
+(Fix 500 error on /api/arbitrage-opportunities + make timeframe charts 1H/24H/90D/1Y work reliably)
+
+In my deployed app, the browser console shows repeated errors:
+
+Failed to load resource: the server responded with a status of 500 ()   api/arbitrage-opportunities
+WebSocket disconnected
+Attempting to reconnect WebSocket (1/3)...
+
+
+At the same time, the coin charts for the time ranges 1H, 24H, 90D, and 1Y are not behaving correctly (they either don’t update, stay flat, or break when switching timeframes).
+
+I need you to fix only these backend/API + chart issues, and not touch anything else in the project (auth, admin, deposits, general UI).
+
+1. Fix /api/arbitrage-opportunities 500 error
+
+Locate the backend route/handler for:
+
+GET /api/arbitrage-opportunities
+
+
+Wrap its logic in a proper try/catch:
+
+app.get('/api/arbitrage-opportunities', async (req, res) => {
+  try {
+    // existing logic here...
+  } catch (err) {
+    console.error('[arbitrage-opportunities] error:', err);
+    return res.status(500).json({ message: 'Failed to fetch arbitrage opportunities' });
+  }
+});
+
+
+Inside the try block:
+
+Inspect all calls to external price APIs (CoinGecko, Binance, etc.).
+
+Make sure all async calls use await and Promise.all correctly.
+
+Make sure you are not passing invalid parameters to the external API:
+
+For CoinGecko market/ohlc endpoints, use valid days & interval combinations.
+
+Ensure the route always returns the same JSON shape that the frontend expects, e.g.:
+
+[
+  {
+    asset: 'BTC',
+    buyExchange: 'Binance',
+    sellExchange: 'Kraken',
+    buyPrice: 86000,
+    sellPrice: 88400,
+    spreadPercent: 2.8
+  },
+  ...
+]
+
+
+If the external API fails for one asset/exchange, skip that entry instead of throwing and killing the whole request.
+
+After fixing, the route must return HTTP 200 with a valid JSON array in normal conditions, so the frontend stops showing 500 errors.
+
+2. Make timeframe charts (1H / 24H / 90D / 1Y) actually update
+
+You previously added timeframes to the coin chart. Now:
+
+Locate the backend (or service) that fetches historical price data for the chart (could be used by /api/price-history, /api/prices, or reuse CoinGecko directly).
+
+For CoinGecko, use valid combinations of days and interval for each timeframe:
+
+const timeframes = {
+  '1H':  { days: 1,   interval: 'minute' },  // use minute-level or hourly and slice
+  '24H': { days: 1,   interval: 'hourly' },
+  '7D':  { days: 7,   interval: 'hourly' },
+  '30D': { days: 30,  interval: 'daily' },
+  '90D': { days: 90,  interval: 'daily' },
+  '1Y':  { days: 365, interval: 'daily' },
+};
+
+
+Use the correct endpoint:
+
+For candlestick charts:
+
+/coins/{id}/ohlc?vs_currency=usd&days={days}
+
+
+It returns [timestamp, open, high, low, close].
+
+Parse data into whatever structure the chart library needs, for example:
+
+const candles = data.map(([time, open, high, low, close]) => ({
+  time: Math.floor(time / 1000), // seconds if required by chart lib
+  open,
+  high,
+  low,
+  close,
+}));
+
+
+In the frontend chart component:
+
+The timeframe selector (1H / 24H / 7D / 30D / 90D / 1Y) must call one function that:
+
+Sets the active timeframe state.
+
+Requests new data for that timeframe from the backend/API.
+
+Replaces the chart data with the new dataset.
+
+Example:
+
+async function handleTimeframeChange(tfKey) {
+  setActiveTimeframe(tfKey);
+  const res = await fetch(`/api/price-history?asset=${asset}&tf=${tfKey}`);
+  const data = await res.json();
+  setChartData(data);
+}
+
+
+Make sure this function is actually used in the onClick of the timeframe buttons.
+
+Ensure that 90D and 1Y work too – they should not request “minute” level data if the external API doesn’t support it. Use daily for those.
+
+3. WebSocket reconnect spam – do not break the UI
+
+You log messages like:
+
+WebSocket disconnected
+Attempting to reconnect WebSocket (1/3)...
+
+
+This is fine, but make sure:
+
+WebSocket failures do not cause any unhandled exceptions in the frontend.
+
+If WebSocket reconnect fails a few times, it should stop retrying or switch to a “paused” state instead of looping endlessly.
+
+The charts and arbitrage opportunities must still load via HTTP, even if WebSocket is down.
+
+4. Do NOT change anything else
+
+Do not touch login/signup, admin routes, DB models, deposits, withdrawals, or overall UI styling.
+
+Only:
+
+Fix /api/arbitrage-opportunities so it no longer returns 500.
+
+Fix the price history/timeframe logic so that 1H, 24H, 90D, and 1Y charts actually load and update properly.
+
+Make WebSocket reconnect logic safe and not crash the app.
+
+✅ Expected result
+
+No more 500 errors in the console for api/arbitrage-opportunities.
+
+Arbitrage opportunities load correctly.
+
+When selecting timeframes (1H / 24H / 90D / 1Y), the candlestick chart updates with real data.
+
+WebSocket connect/disconnect logs may still appear, but the UI and charts work fine even if WS is temporarily down.

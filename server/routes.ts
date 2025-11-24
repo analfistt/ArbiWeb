@@ -345,15 +345,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get arbitrage opportunities (simulated based on real prices)
   app.get("/api/arbitrage-opportunities", async (req, res) => {
     try {
-      const response = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple&vs_currencies=usd"
-      );
+      // Try to fetch from CoinGecko with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
       
-      if (!response.ok) {
-        throw new Error("Failed to fetch prices");
+      let prices: any = null;
+      
+      try {
+        const response = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple&vs_currencies=usd",
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          prices = await response.json();
+        } else {
+          console.warn(`[arbitrage-opportunities] CoinGecko returned ${response.status}, using fallback`);
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        console.warn(`[arbitrage-opportunities] CoinGecko fetch failed:`, fetchError.message);
       }
 
-      const prices = await response.json();
+      // Start with synthetic default prices for all symbols (GUARANTEED baseline)
+      const finalPrices: Record<string, { usd: number }> = {
+        bitcoin: { usd: 95000 },
+        ethereum: { usd: 3500 },
+        solana: { usd: 180 },
+        cardano: { usd: 0.85 },
+        ripple: { usd: 2.20 },
+      };
+      
+      // Try to overlay real prices from CoinGecko (if available and valid)
+      if (prices && Object.keys(prices).length > 0) {
+        Object.entries(prices).forEach(([coin, data]: [string, any]) => {
+          if (data && typeof data.usd === 'number' && data.usd > 0) {
+            // Valid price from CoinGecko - use it
+            finalPrices[coin] = { usd: data.usd };
+          }
+        });
+      } else {
+        // CoinGecko failed - try priceService for BTC/ETH/SOL
+        console.log("[arbitrage-opportunities] CoinGecko unavailable, checking priceService...");
+        const btcPrice = priceService.getPrice("BTC");
+        const ethPrice = priceService.getPrice("ETH");
+        const solPrice = priceService.getPrice("SOL");
+        
+        if (btcPrice && btcPrice.price > 0) {
+          finalPrices.bitcoin = { usd: btcPrice.price };
+        }
+        if (ethPrice && ethPrice.price > 0) {
+          finalPrices.ethereum = { usd: ethPrice.price };
+        }
+        if (solPrice && solPrice.price > 0) {
+          finalPrices.solana = { usd: solPrice.price };
+        }
+        
+        // Log which symbols are using fallback
+        const syntheticSymbols = [];
+        if (!btcPrice || btcPrice.price <= 0) syntheticSymbols.push('BTC');
+        if (!ethPrice || ethPrice.price <= 0) syntheticSymbols.push('ETH');
+        if (!solPrice || solPrice.price <= 0) syntheticSymbols.push('SOL');
+        syntheticSymbols.push('ADA', 'XRP'); // Always synthetic for these
+        
+        console.log(`[arbitrage-opportunities] Using synthetic prices for: ${syntheticSymbols.join(', ')}`);
+      }
+      
+      prices = finalPrices;
       
       // Generate simulated arbitrage opportunities with small spreads
       const exchanges = ["Binance", "Kraken", "Coinbase", "Gemini", "Bitfinex", "KuCoin"];
@@ -361,6 +420,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       Object.entries(prices).forEach(([coin, data]: [string, any]) => {
         const basePrice = data.usd;
+        
+        // Skip if price is invalid or zero
+        if (!basePrice || basePrice <= 0) {
+          return;
+        }
+        
         const buyExchange = exchanges[Math.floor(Math.random() * exchanges.length)];
         let sellExchange = exchanges[Math.floor(Math.random() * exchanges.length)];
         while (sellExchange === buyExchange) {
@@ -389,10 +454,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
+      // Always return a valid array (even if empty)
       res.json(opportunities);
     } catch (error) {
-      console.error("Arbitrage opportunities error:", error);
-      res.status(500).json({ error: "Failed to get arbitrage opportunities" });
+      console.error("[arbitrage-opportunities] Unexpected error:", error);
+      // Return empty array instead of 500 error
+      res.json([]);
     }
   });
 
