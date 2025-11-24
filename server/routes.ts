@@ -8,6 +8,7 @@ import { z } from "zod";
 import config from "./config";
 import { nowPaymentsService } from "./services/nowpayments";
 import { wsManager } from "./websocket";
+import { priceService } from "./priceService";
 
 const JWT_SECRET = config.jwtSecret;
 
@@ -140,6 +141,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  // ============ Market Data Routes ============
+  
+  // Get current prices for all tracked coins
+  app.get("/api/market/prices", async (_req, res) => {
+    try {
+      const prices = priceService.getPrices();
+      res.json({ prices });
+    } catch (error) {
+      console.error("Get prices error:", error);
+      res.status(500).json({ error: "Failed to get prices" });
+    }
+  });
+
+  // Get price for a specific coin
+  app.get("/api/market/price/:symbol", async (req, res) => {
+    try {
+      const symbol = req.params.symbol.toUpperCase();
+      const price = priceService.getPrice(symbol);
+      
+      if (!price) {
+        return res.status(404).json({ error: "Price not found for symbol" });
+      }
+      
+      res.json(price);
+    } catch (error) {
+      console.error("Get price error:", error);
+      res.status(500).json({ error: "Failed to get price" });
+    }
+  });
+
+  // Get historical candle data
+  app.get("/api/market/candles/:symbol/:interval", async (req, res) => {
+    try {
+      const { symbol, interval } = req.params;
+      const limit = parseInt(req.query.limit as string) || 100;
+      
+      const candles = await priceService.getCandles(symbol, interval, limit);
+      res.json({ candles });
+    } catch (error) {
+      console.error("Get candles error:", error);
+      res.status(500).json({ error: "Failed to get candles" });
     }
   });
 
@@ -860,6 +905,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize WebSocket server
   wsManager.initialize(httpServer);
+  
+  // Start price service for live crypto prices
+  priceService.start();
   
   return httpServer;
 }

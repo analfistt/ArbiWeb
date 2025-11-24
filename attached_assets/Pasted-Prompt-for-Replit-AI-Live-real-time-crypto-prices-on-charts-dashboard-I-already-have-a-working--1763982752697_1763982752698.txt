@@ -1,0 +1,135 @@
+Prompt for Replit AI (Live real-time crypto prices on charts & dashboard)
+
+I already have a working crypto arbitrage web app with:
+
+A dashboard that shows crypto price charts (BTC, ETH, SOL, etc.)
+
+Summary cards (Total Balance, P/L, etc.)
+
+Arbitrage opportunities list
+
+Right now, the price data on the charts is static or only fetched once.
+I want you to upgrade the system so that all coin prices shown in the charts and in the UI are kept in live sync with real market prices, using a reliable public crypto API.
+
+Please modify the existing project instead of starting a new one.
+
+1. Choose and use a real-time price API
+
+Use one of these public APIs (whichever fits best with the current stack):
+
+Binance public API
+
+CoinGecko API
+
+Or another well-known, free crypto price API
+
+Requirements:
+
+Fetch live prices and historical candles for at least the main coins I display (BTC, ETH, SOL, USDT, etc.).
+
+Use appropriate endpoints for:
+
+Current ticker price
+
+OHLC/candlestick data for different timeframes (1m, 15m, 1H, 1D, 1W, 1M) if available.
+
+If the app already uses an API, reuse it but change the logic so data is refreshed continuously.
+
+2. Live updates mechanism
+
+Implement one of the following (depending on what fits better with the existing code):
+
+Option A – WebSocket to exchange (preferred)
+
+Use Binance WebSocket streams or similar to subscribe to:
+
+btcusdt, ethusdt, solusdt, etc.
+
+When WebSocket messages arrive:
+
+Update current price in the app state.
+
+Push the new data point into the chart series (keeping a reasonable max history length).
+
+Update any widgets/cards that show current price, 24h change, or spreads.
+
+Option B – Polling (if WebSocket is not convenient)
+
+Set up a polling loop on the backend or frontend:
+
+Fetch current prices every 3–5 seconds.
+
+Fetch new candle data every 30–60 seconds (or according to timeframe).
+
+Use setInterval (frontend) or a scheduled loop (backend) and update the state via your existing APIs.
+
+In both cases, make sure errors are handled gracefully and the UI does not crash if the API temporarily fails.
+
+3. Integrate live prices into existing components
+
+Update the following UI parts to use the live price state:
+
+Price charts
+
+When new data (price or candle) arrives, append/update it in the chart series.
+
+Re-render the chart smoothly without full reload.
+
+For candlestick charts, update the last candle in the current timeframe as new trades come in.
+
+Dashboard header / asset info
+
+Show the current live price next to each asset symbol.
+
+Show 24h change % and mark it green/red accordingly.
+
+Live Opportunities / Arbitrage spread list
+
+Recalculate spreads based on live bid/ask or last price from the API for each exchange.
+
+The spread percentages should update themselves continuously.
+
+Any P/L or balance values that depend on price
+
+Recompute USD value and unrealized P/L as prices change.
+
+Keep realized P/L logic as is.
+
+4. Performance & throttling
+
+Avoid overloading the API:
+
+If using polling, use reasonable intervals (e.g. 3–5 seconds for current price, 30–60 seconds for candles).
+
+If using WebSocket, subscribe only to the symbols actually shown on the dashboard.
+
+Debounce UI updates if needed to keep the charts smooth.
+
+5. Implementation details
+
+Keep all existing backend routes and DB structure unchanged.
+
+It’s OK to add:
+
+A dedicated priceService / marketDataService module.
+
+A small in-memory cache on the backend, if that simplifies distribution to the frontend.
+
+Make sure the frontend stores live prices in a central state (React context, Redux, or top-level state) so that:
+
+Charts
+
+Cards
+
+Opportunities list
+all read from the same live data source.
+
+6. Final behavior
+
+After your changes:
+
+The price chart of each asset should move and update automatically, without page refresh.
+
+Current prices and spreads should always reflect real, live market prices from the external API.
+
+If the connection drops, the UI should show a subtle “live feed paused / reconnecting” state but remain usable.

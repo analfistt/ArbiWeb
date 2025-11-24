@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react";
 import { TimeframeSelector, Timeframe } from "./timeframe-selector";
+import { usePrice } from "@/lib/priceContext";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 interface TradingChartProps {
   assetSymbol: string;
@@ -23,28 +26,30 @@ const ASSET_COLORS = {
   DEFAULT: { line: "#F3BA2F", gradient: "rgba(243, 186, 47, 0.3)" }
 };
 
-function getTimeframeConfig(timeframe: Timeframe) {
+// Map our timeframes to Binance intervals
+function getBinanceInterval(timeframe: Timeframe): string {
   switch (timeframe) {
-    case "1m":
-      // Last 1 minute: 60 data points at 1 second intervals
-      return { dataPoints: 60, intervalMs: 1 * 1000, label: "1m" };
-    case "15m":
-      // Last 15 minutes: 60 data points at 15 second intervals
-      return { dataPoints: 60, intervalMs: 15 * 1000, label: "15m" };
     case "1H":
-      // Last 1 hour: 60 data points at 1 minute intervals
-      return { dataPoints: 60, intervalMs: 60 * 1000, label: "1H" };
+      return "1h";
+    case "4H":
+      return "4h";
     case "1D":
-      // Last 1 day: 48 data points at 30 minute intervals
-      return { dataPoints: 48, intervalMs: 30 * 60 * 1000, label: "1D" };
-    case "1W":
-      // Last 1 week: 28 data points at 6 hour intervals
-      return { dataPoints: 28, intervalMs: 6 * 60 * 60 * 1000, label: "1W" };
-    case "1M":
-      // Last 1 month: 30 data points at 1 day intervals
-      return { dataPoints: 30, intervalMs: 24 * 60 * 60 * 1000, label: "1M" };
+      return "1d";
     default:
-      return { dataPoints: 60, intervalMs: 60 * 1000, label: "1H" };
+      return "1h";
+  }
+}
+
+function getCandleLimit(timeframe: Timeframe): number {
+  switch (timeframe) {
+    case "1H":
+      return 24; // 24 hours
+    case "4H":
+      return 42; // ~7 days worth
+    case "1D":
+      return 30; // 30 days
+    default:
+      return 24;
   }
 }
 
@@ -52,8 +57,8 @@ function formatTimeLabel(timestamp: number, timeframe: Timeframe): string {
   const date = new Date(timestamp);
   
   switch (timeframe) {
-    case "1m":
-    case "15m":
+    case "1H":
+    case "4H":
       return date.toLocaleTimeString("en-US", { 
         hour: "2-digit", 
         minute: "2-digit",
@@ -96,58 +101,103 @@ export function TradingChart({
   const timeframe = externalTimeframe ?? internalTimeframe;
   const setTimeframe = externalOnChange ?? setInternalTimeframe;
   
+  // Get live price from price context
+  const { getPrice, lastUpdate, isConnected } = usePrice();
+  const livePriceData = getPrice(assetSymbol);
+  
+  // Fetch historical candle data from API
+  const binanceInterval = getBinanceInterval(timeframe);
+  const candleLimit = getCandleLimit(timeframe);
+  
+  const { data: candlesData, isLoading } = useQuery({
+    queryKey: ["/api/market/candles", assetSymbol, binanceInterval, candleLimit],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/market/candles/${assetSymbol}/${binanceInterval}?limit=${candleLimit}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch candles");
+      return response.json();
+    },
+    refetchInterval: 60000, // Refetch every 60 seconds to avoid rate limits
+  });
+  
   const { data, currentPrice, change24h, colors } = useMemo(() => {
-    const basePrice = 
-      assetSymbol === "BTC" ? 43250 :
-      assetSymbol === "ETH" ? 2680 :
-      assetSymbol === "SOL" ? 98.5 : 100;
-
-    const config = getTimeframeConfig(timeframe);
-    const chartData: ChartDataPoint[] = [];
-    const now = Date.now();
-
-    for (let i = 0; i < config.dataPoints; i++) {
-      const variance = (Math.random() - 0.5) * basePrice * 0.025;
-      const trend = i * (basePrice * 0.0004);
-      const price = basePrice + variance + trend;
-      
-      const timestamp = now - (config.dataPoints - i) * config.intervalMs;
-      const timeStr = formatTimeLabel(timestamp, timeframe);
-
-      chartData.push({
-        time: timeStr,
-        price: Number(price.toFixed(2)),
-        timestamp
-      });
-    }
-
-    const firstPrice = chartData[0].price;
-    const lastPrice = chartData[chartData.length - 1].price;
-    const change = ((lastPrice - firstPrice) / firstPrice) * 100;
-
     const assetColors = ASSET_COLORS[assetSymbol as keyof typeof ASSET_COLORS] || ASSET_COLORS.DEFAULT;
+    
+    // Use live price if available, otherwise fall back to last candle price
+    const livePrice = livePriceData?.price;
+    
+    // Use live 24h change from price context (more reliable)
+    const live24hChange = livePriceData?.changePercent24h || 0;
+    
+    if (!candlesData?.candles || candlesData.candles.length === 0) {
+      // Return data with live price while candles are loading
+      return {
+        data: [],
+        currentPrice: livePrice || 0,
+        change24h: live24hChange,
+        colors: assetColors
+      };
+    }
+    
+    const chartData: ChartDataPoint[] = candlesData.candles.map((candle: any) => ({
+      time: formatTimeLabel(candle.time, timeframe),
+      price: candle.close,
+      timestamp: candle.time
+    }));
+    
+    // Update last candle with live price if available
+    if (livePrice && chartData.length > 0) {
+      const lastCandle = chartData[chartData.length - 1];
+      const now = Date.now();
+      const timeSinceLastCandle = now - lastCandle.timestamp;
+      
+      // If within reasonable time, update the last point
+      if (timeSinceLastCandle < 300000) { // Within 5 minutes
+        lastCandle.price = livePrice;
+      } else {
+        // Add new point if data is stale
+        chartData.push({
+          time: formatTimeLabel(now, timeframe),
+          price: livePrice,
+          timestamp: now
+        });
+      }
+    }
 
     return {
       data: chartData,
-      currentPrice: lastPrice,
-      change24h: change,
+      currentPrice: livePrice || chartData[chartData.length - 1]?.price || 0,
+      change24h: live24hChange, // Use reliable 24h change from API
       colors: assetColors
     };
-  }, [assetSymbol, timeframe]);
+  }, [assetSymbol, timeframe, candlesData, livePriceData, lastUpdate]);
 
   const isPositive = change24h >= 0;
 
-  // Display the active timeframe as the change period
-  const changePeriodLabel = timeframe;
+  // Always show "24h" since change data is from API's 24h change
+  const changePeriodLabel = "24h";
 
   return (
     <div className="w-full" data-testid={`trading-chart-${assetSymbol.toLowerCase()}`}>
-      {/* Timeframe Selector */}
+      {/* Timeframe Selector & Status */}
       <div className="flex items-center justify-between mb-4">
         <TimeframeSelector 
           currentTimeframe={timeframe}
           onChange={setTimeframe}
         />
+        {/* Live Price Status */}
+        {isConnected ? (
+          <Badge variant="outline" className="gap-1.5 border-[hsl(var(--success))] text-[hsl(var(--success))]">
+            <Wifi className="w-3 h-3" />
+            <span className="text-xs">Live</span>
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="gap-1.5 border-muted-foreground/50 text-muted-foreground">
+            <WifiOff className="w-3 h-3" />
+            <span className="text-xs">Offline</span>
+          </Badge>
+        )}
       </div>
 
       {/* Chart Header */}

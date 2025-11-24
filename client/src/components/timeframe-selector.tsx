@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 
-export type Timeframe = "1m" | "15m" | "1H" | "1D" | "1W" | "1M";
+// Only include timeframes that CoinGecko accurately provides
+// 1H = hourly candles, 4H = 4-hourly candles, 1D = daily candles
+export type Timeframe = "1H" | "4H" | "1D";
 
 interface TimeframeSelectorProps {
   currentTimeframe: Timeframe;
@@ -9,12 +11,9 @@ interface TimeframeSelectorProps {
 }
 
 const TIMEFRAMES: { value: Timeframe; label: string }[] = [
-  { value: "1m", label: "1m" },
-  { value: "15m", label: "15m" },
   { value: "1H", label: "1H" },
+  { value: "4H", label: "4H" },
   { value: "1D", label: "1D" },
-  { value: "1W", label: "1W" },
-  { value: "1M", label: "1M" },
 ];
 
 export function TimeframeSelector({ 
