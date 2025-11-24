@@ -11,7 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -61,45 +61,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Login failed");
-      }
-
-      const data = await response.json();
-      setUser(data.user);
-      setToken(data.token);
-      localStorage.setItem("token", data.token);
-
-      toast({
-        title: "Welcome back!",
-        description: "Successfully logged in",
-      });
-
-      // Redirect based on admin status
-      if (data.user.isAdmin) {
-        setLocation("/admin");
-      } else {
-        setLocation("/dashboard");
-      }
-    } catch (error: any) {
+    if (!response.ok) {
+      const error = await response.json();
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.error || "Login failed",
         variant: "destructive",
       });
-      throw error;
+      throw new Error(error.error || "Login failed");
     }
+
+    const data = await response.json();
+    setUser(data.user);
+    setToken(data.token);
+    localStorage.setItem("token", data.token);
+
+    toast({
+      title: "Welcome back!",
+      description: "Successfully logged in",
+    });
+
+    // Return user data so the calling component can handle redirect
+    return data.user;
   };
 
   const register = async (email: string, password: string) => {

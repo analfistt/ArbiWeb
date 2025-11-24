@@ -1,0 +1,92 @@
+🚨 Prompt for Replit AI (Fix single-click login for both Admin + Regular User)
+
+There is a bug in the login system:
+Users (including admin) must click the Login button twice before being redirected.
+I need you to fix this so that one click executes login, sets auth, and redirects immediately for both normal users and admin.
+
+📌 Do NOT change anything else in the project. Only fix login behavior.
+
+🔧 Required Fix
+
+Fix the frontend login handler
+
+Ensure the login request (fetch/axios) runs immediately on the first click.
+
+Remove any duplicated login calls or onClick handlers.
+
+Ensure the login button is ONLY:
+
+<button type="submit">Login</button>
+
+
+The login function must NOT clear inputs before sending the request.
+
+Ensure the login request waits for the actual response
+
+The handler must await the login request BEFORE redirecting.
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  const success = await login(email, password);
+  if (success) redirectUser();
+};
+
+
+Fix redirect timing
+
+Redirect only after cookie/JWT is stored.
+
+Do NOT redirect prematurely during the first click.
+
+Ensure admin vs user routing works from the same login
+
+After a successful login, read the response:
+
+If is_admin === true → route to the Admin Dashboard.
+
+If is_admin === false → route to the User Dashboard.
+
+Example logic AFTER login succeeds:
+
+if (response.user?.is_admin) {
+  navigate('/admin');
+} else {
+  navigate('/dashboard');
+}
+
+
+Do NOT modify backend authentication logic
+
+Keep hashing, DB, routes, cookies, JWT exactly the same.
+
+Only ensure the frontend sends credentials correctly:
+
+If using fetch:
+
+credentials: "include"
+
+
+If using axios:
+
+axios.defaults.withCredentials = true;
+
+🎯 Expected Behavior After Fix
+Action	Clicks	Result
+Admin login	1 click	Redirects to Admin Panel
+Regular user login	1 click	Redirects to Dashboard
+Wrong credentials	1 click	Shows error, no redirect
+❌ DO NOT CHANGE
+
+UI styling
+
+Animations
+
+Database
+
+Backend logic
+
+WebSockets
+
+Admin creation script
+
+Any other component besides login execution/redirect
