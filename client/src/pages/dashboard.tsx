@@ -17,6 +17,7 @@ import { WithdrawDialog } from "@/components/withdraw-dialog";
 import { TradingChart } from "@/components/trading-chart";
 import { Timeframe } from "@/components/timeframe-selector";
 import { TopNav } from "@/components/top-nav";
+import { CryptoArbitrageInfo } from "@/components/crypto-arbitrage-info";
 import { useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -297,6 +298,11 @@ export default function Dashboard() {
       <TopNav />
 
       <div className="max-w-[1600px] mx-auto px-6 py-8">
+        {/* Educational Info Banner */}
+        <div className="mb-8">
+          <CryptoArbitrageInfo />
+        </div>
+
         {/* Row 1: KPI Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <KPICard

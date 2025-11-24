@@ -1,0 +1,95 @@
+(Add “What is Crypto Arbitrage?” info banner/section to the app)
+I already have a working crypto arbitrage web app (ArbiTradeX) with a user dashboard.
+Now I want you to add a nice informational banner/section inside the app where users can read a short explanation about what crypto arbitrage is.
+📌 Do NOT change any backend logic, authentication, admin, deposits, or trading logic. Only add this UI section.
+
+1. Where to show it
+Add an info section in one of the following places (choose what fits best with the current layout):
+
+
+At the top or near the top of the user dashboard, or
+
+
+As a dedicated section on the landing page (below the hero section)
+
+
+The design should look like a clean, premium info banner that matches the current dark Binance-style theme.
+
+2. Design of the banner
+Create a reusable component, for example:
+<InfoBanner /> or <CryptoArbitrageInfo />
+Design guidelines:
+
+
+Full-width card or section with:
+
+
+Dark background (slightly lighter than page background)
+
+
+Soft border and subtle shadow
+
+
+Rounded corners
+
+
+
+
+Left side: text content (title + paragraphs)
+
+
+Right side (optional): small icon/illustration related to trading/analytics
+
+
+Add a small label at the top like: “Learn” or “Education”
+
+
+Optionally make it dismissible with a small “X” close button that hides it for the session.
+
+
+
+3. Text content (use exactly this copy)
+Use the following English copy inside the banner (format nicely with headings and short paragraphs):
+Title:
+What Is Crypto Arbitrage?
+Body text:
+
+Crypto arbitrage is a trading strategy that aims to profit from price differences of the same cryptocurrency across multiple exchanges. Instead of predicting market direction, traders exploit temporary price gaps by buying a coin where it’s cheaper and selling it where it’s more expensive, capturing the difference as profit.
+Example
+If Bitcoin is priced at $85,000 on Kraken but $85,400 on Binance, a trader can buy Bitcoin for $85,000 on Kraken and sell it for $85,400 on Binance. The profit is the $400 difference (before fees).
+Why Do Price Differences Occur?
+Cryptocurrency prices are not perfectly synchronized between exchanges. Variations in supply and demand, market liquidity, and regional activity create short-lived price differences that arbitrage traders can take advantage of.
+Main Types of Crypto Arbitrage
+• Cross-Exchange Arbitrage: Buy on one exchange and sell on another at a higher price.
+• Triangular Arbitrage: Profit from exchange rate differences between three cryptocurrencies within the same exchange (for example BTC → ETH → XRP → BTC).
+• Futures Arbitrage: Earn from price gaps between spot prices and futures contracts.
+Benefits
+• You don’t need to predict market trends.
+• Profit comes from price gaps, not speculation.
+• Often considered less risky compared to traditional trading strategies.
+
+Make sure the text is nicely formatted with headings, bold highlights, and bullet points, matching the typography of the current UI.
+
+4. Implementation rules
+
+
+Keep all routing and existing components intact.
+
+
+Only add:
+
+
+The new info banner component
+
+
+Any minimal styling needed (CSS/Tailwind) consistent with the existing theme
+
+
+
+
+Do not alter existing business logic or APIs.
+
+
+
+5. Result
+After your changes, users should see a clear, elegant banner/section titled “What Is Crypto Arbitrage?” with the above explanation, so they can easily understand what the platform does.
