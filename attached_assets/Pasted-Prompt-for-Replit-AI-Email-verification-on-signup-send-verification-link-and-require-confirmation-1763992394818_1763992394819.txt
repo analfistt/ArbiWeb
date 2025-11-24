@@ -1,0 +1,192 @@
+Prompt for Replit AI
+
+(Email verification on signup: send verification link and require confirmation)
+
+I already have a full-stack crypto arbitrage web app with:
+
+User signup (/api/auth/signup)
+
+User login (/api/auth/login)
+
+SQLite database
+
+Frontend login / signup pages
+
+Now I want to add email verification:
+
+When a user registers, they receive an email with a verification link.
+Only after clicking the link their email is marked as verified and they can access the dashboard.
+
+Please modify the existing project, do NOT start a new one.
+
+1. Database changes
+
+In the users table, add the following fields (or create a migration):
+
+is_verified – boolean, default false
+
+verification_token – string (nullable)
+
+verification_expires_at – datetime (nullable)
+
+If you prefer a separate table (e.g. email_verification_tokens), that’s fine, but keep it simple.
+
+2. Environment variables for email
+
+Use Nodemailer (or an equivalent library) with SMTP credentials from environment variables:
+
+SMTP_HOST
+
+SMTP_PORT
+
+SMTP_USER
+
+SMTP_PASS
+
+EMAIL_FROM (e.g. "ArbiTradeX <no-reply@arbtradex.com>")
+
+APP_BASE_URL (e.g. https://my-app.replit.app or prod domain)
+
+Create a small email service module, e.g. emailService.js, that exposes:
+
+async function sendVerificationEmail(to, token) { ... }
+
+
+This function should:
+
+Build a verification URL:
+
+const url = `${process.env.APP_BASE_URL}/api/auth/verify-email?token=${token}`;
+
+
+Send an HTML email with:
+
+A short welcome message
+
+A clear “Verify Email” button linking to the URL
+
+A plain-text link as fallback
+
+3. Signup flow – generate token & send email
+
+In POST /api/auth/signup:
+
+After validating input and ensuring the email is unique, generate a random verification token:
+
+const crypto = require('crypto');
+const token = crypto.randomBytes(32).toString('hex');
+const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+
+Save the new user with:
+
+is_verified = false
+
+verification_token = token
+
+verification_expires_at = expiresAt
+
+Hashed password (keep existing logic)
+
+After successful creation, call sendVerificationEmail(user.email, token).
+
+The API should not auto-login unverified users.
+Instead, return a success response like:
+
+{ "message": "Signup successful. Please check your email to verify your account." }
+
+
+Update the frontend Signup page to show this message clearly to the user.
+
+4. Verification endpoint
+
+Create a new route:
+
+GET /api/auth/verify-email?token=...
+
+
+Logic:
+
+Read token from query string.
+
+Find the user with that verification_token.
+
+If not found, or if verification_expires_at is in the past:
+
+Return an error (e.g. 400) with message: "Invalid or expired verification link."
+
+If valid:
+
+Set:
+
+is_verified = true
+
+verification_token = null
+
+verification_expires_at = null
+
+Save the user.
+
+Optionally auto-redirect to frontend route with a success state, e.g.:
+
+Redirect to /login?verified=1
+OR respond with JSON that frontend can use.
+
+5. Login restrictions for unverified users
+
+In POST /api/auth/login:
+
+After finding the user and checking the password, add:
+
+if (!user.is_verified) {
+  return res.status(403).json({
+    message: 'Please verify your email before logging in.'
+  });
+}
+
+
+Only if is_verified === true continue to create the JWT / session, and return success.
+
+On the frontend, if login response is 403 with that message, show a toast / banner:
+
+“Please verify your email. Check your inbox for the verification link.”
+
+6. Optional: resend verification link
+
+(If it’s easy with current UI, implement; if not, you may skip this.)
+
+Add endpoint: POST /api/auth/resend-verification
+
+Requires email, finds user, if not verified generates a new token and sends email again.
+
+7. Do NOT change anything else
+
+Do not modify existing business logic (deposits, arbitrage positions, admin, charts).
+
+Do not change login/session format.
+
+Only add:
+
+DB fields for verification
+
+Email send logic
+
+Signup: generate token + send email
+
+Verify-email route
+
+Login: block unverified users with 403
+
+✅ Expected result
+
+User signs up → user record is created with is_verified = false.
+
+User receives an email with a Verify Email link.
+
+After clicking the link:
+
+User is marked as verified.
+
+They can log in normally.
+
+Unverified users trying to log in see a clear “please verify your email” error.
