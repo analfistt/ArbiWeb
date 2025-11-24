@@ -2,122 +2,7 @@
 
 ## Overview
 
-ArbiTradeX is a full-stack crypto arbitrage web application that demonstrates a trading platform where users can monitor arbitrage opportunities across multiple cryptocurrency exchanges. The platform features user authentication, personal dashboards, wallet management, and an admin back office for platform management.
-
-**Core Purpose:** Provide a demo platform for crypto arbitrage trading with real-time opportunity monitoring, user portfolio tracking, and comprehensive admin controls.
-
-**Tech Stack:**
-- Frontend: React with TypeScript, Vite, TailwindCSS, shadcn/ui components
-- Backend: Express.js with TypeScript
-- Database: SQLite with better-sqlite3
-- Authentication: JWT-based authentication with bcrypt password hashing
-- State Management: TanStack Query (React Query)
-- Routing: Wouter
-
-## Recent Changes
-
-### November 24, 2025 - Timeframe Selector Feature
-**Objective:** Add professional Binance-style timeframe selector to crypto trading charts with state persistence across tab switches.
-
-**Changes Implemented:**
-
-1. **TimeframeSelector Component (NEW)**
-   - Created reusable timeframe selector (`client/src/components/timeframe-selector.tsx`)
-   - Six timeframe options: 1m, 15m, 1H, 1D, 1W, 1M
-   - Binance-style design:
-     - Pill-shaped buttons with rounded corners
-     - Active state: Yellow/gold (#F3BA2F) background
-     - Inactive state: Muted gray text
-     - Hover effects and smooth transitions
-   - Fully responsive and mobile-friendly
-
-2. **TradingChart Enhancements**
-   - Updated `client/src/components/trading-chart.tsx` to support timeframe selection
-   - Created `getTimeframeConfig()` helper:
-     - 1m: 60 points × 1s = Last 1 minute
-     - 15m: 60 points × 15s = Last 15 minutes
-     - 1H: 60 points × 60s = Last 1 hour
-     - 1D: 48 points × 30min = Last 1 day
-     - 1W: 28 points × 6h = Last 1 week
-     - 1M: 30 points × 24h = Last 1 month
-   - Created `formatTimeLabel()` for timeframe-specific axis labels
-   - Integrated TimeframeSelector component above chart
-   - Dynamic change period label matches selected timeframe
-
-3. **State Persistence Solution**
-   - Lifted timeframe state to dashboard level (`client/src/pages/dashboard.tsx`)
-   - Separate state variables for each chart:
-     - `btcTimeframe`, `ethTimeframe`, `solTimeframe`
-   - TradingChart accepts optional controlled props:
-     - `timeframe`: Current timeframe
-     - `onTimeframeChange`: Callback for timeframe changes
-   - Controlled component pattern with local state fallback
-   - State persists when switching between chart tabs
-
-**Testing:**
-- Comprehensive E2E test passed successfully
-- Verified timeframe selector on all charts (BTC, ETH, SOL)
-- Confirmed all six timeframe buttons work correctly
-- Tested state persistence across tab switches:
-  - Set BTC to 1M, ETH to 1D, SOL to 15m
-  - Rapid tab switching confirmed all selections preserved
-- Charts update instantly when clicking timeframes
-- Independent timeframe state per chart verified
-
-**Technical Implementation:**
-- TypeScript types for timeframe values
-- Helper functions for timeframe calculation and formatting
-- Controlled component pattern for state management
-- Memoized data generation for performance
-- Data-testid attributes for testing
-- Backward compatibility maintained
-
-### November 24, 2025 - Binance-Style UI Redesign
-**Objective:** Complete frontend UI/UX redesign to match Binance's professional trading interface while preserving all backend functionality.
-
-**Changes Implemented:**
-
-1. **TopNav Component (NEW)**
-   - Created reusable professional top navigation component (`client/src/components/top-nav.tsx`)
-   - Sticky header with backdrop blur for premium feel
-   - Left side: ArbiTradeX logo with TrendingUp icon
-   - Right side: Notification bell, Settings icon, User avatar with dropdown menu
-   - User dropdown includes: Email display, Profile, Settings, Logout (destructive color)
-   - Integrated into Dashboard page
-
-2. **Login Page Redesign**
-   - Binance-style centered dark card with shadow-2xl
-   - Modern top nav with outline "Sign Up" button
-   - Enhanced form styling: h-11 inputs, proper spacing (space-y-5)
-   - Yellow primary button for "Sign In" (h-11, font-semibold)
-   - Smooth transitions on interactive elements
-   - Backdrop blur on navigation bar
-
-3. **Signup Page Redesign**
-   - Matching Binance-style centered dark card
-   - Consistent with login page design
-   - Professional centered layout with 3xl title
-   - Same form enhancements as login page
-   - Yellow primary "Create Account" button
-
-**Testing:**
-- Comprehensive E2E test passed successfully
-- Verified login/signup flows work correctly
-- TopNav component integrates cleanly with dashboard
-- User dropdown menu functions properly (Profile, Settings, Logout)
-- All existing features preserved (KPI cards, trading charts, deposit/withdraw)
-- Authentication flow unchanged and working
-
-**Architecture Review:**
-- Architect confirmed no regressions or security issues
-- Component reusability approved
-- Clean integration without breaking existing functionality
-- Binance-style aesthetic successfully achieved
-
-**Next Steps (Architect Recommendations):**
-- Wire notification and settings actions when destinations available
-- Consider reusing TopNav on admin pages for consistency
-- Hook dropdown items to navigation/dialogs when profile/settings routes exist
+ArbiTradeX is a full-stack crypto arbitrage web application designed as a demo platform. It allows users to monitor real-time arbitrage opportunities across multiple cryptocurrency exchanges, manage personal wallets, and track their portfolios. The platform includes user authentication and a comprehensive admin back office for platform management. The project aims to showcase a modern, premium fintech-style trading interface inspired by leading platforms like Binance.
 
 ## User Preferences
 
@@ -127,176 +12,61 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Component Structure:**
-- Modern React application using functional components with hooks
-- shadcn/ui component library (New York style) for consistent UI elements
-- Client-side routing via Wouter for lightweight navigation
-- Form management through react-hook-form with Zod validation
-
-**Design System (Premium Fintech):**
-- Typography: Inter font with OpenType features (tabular numbers via font-feature-settings: "tnum" 1, "lnum" 1)
-- Dark mode enforced by default via `class="dark"` on HTML element in index.html
-- Premium color palette: Very dark navy backgrounds (#050915), dark slate cards (#0F172A), finance gold accent (#F3BA2F)
-- Modern border radii: 12px (buttons/inputs), 16px (cards), 8px (badges)
-- Custom TailwindCSS configuration with enhanced spacing scale, premium shadows (shadow-glow for gold accent)
-- Professional fintech aesthetic inspired by Binance/Coinbase Pro with refined interactions (150ms transitions)
-- Responsive layouts with mobile-first approach
-
-**State Management:**
-- TanStack Query for server state management and caching
-- Context API for authentication state (AuthContext)
-- Local state with React hooks for component-level state
-
-**Key Pages:**
-- Landing page with hero section, features, and marketing content
-- Login/Signup pages with form validation
-- Dashboard (protected) - user portfolio, transactions, arbitrage opportunities
-- Admin panel (protected, admin-only) - user management, transaction approval
-
-**Trading Chart Component:**
-- Binance-style professional trading charts using Recharts library
-- TradingChart component with area chart + gradient fill visualization
-- Asset-specific color schemes:
-  - BTC: Finance gold (#F3BA2F)
-  - ETH: Crypto blue (#627EEA)
-  - SOL: Crypto green (#14F195)
-- Professional features:
-  - Header bar with asset symbol, name, current price, and 24h change indicator
-  - Dark theme with subtle horizontal gridlines (#1E293B)
-  - Modern tooltips with dark background (#020617) and formatted values
-  - Vertical crosshair cursor that follows mouse interactions
-  - Active dot highlighting on hover
-  - Smooth 800ms load animations
-  - Responsive design (280px height, adaptive width)
-- Dashboard integration with tabbed interface for BTC, ETH, SOL charts
+The frontend is a modern React application built with TypeScript, Vite, TailwindCSS, and shadcn/ui components. It uses Wouter for client-side routing and TanStack Query for server state management and caching. The design system enforces a premium fintech aesthetic, inspired by Binance/Coinbase Pro, with a dark mode default, Inter font, a specific color palette (dark navy, slate, finance gold accent), and modern border radii. Forms are managed with react-hook-form and Zod validation. Key pages include a landing page, login/signup, a protected user dashboard with KPI cards and trading charts, and an admin panel. Trading charts utilize Recharts for Binance-style visualizations with asset-specific color schemes (BTC: gold, ETH: blue, SOL: green) and features like header bars, tooltips, and crosshair cursors.
 
 ### Backend Architecture
 
-**Server Setup:**
-- Dual-mode Express server: development (with Vite HMR) and production (static serving)
-- TypeScript-first with ES modules
-- Middleware: JSON body parsing, request logging, error handling
-
-**API Structure:**
-- RESTful API endpoints under `/api` prefix
-- Route groups:
-  - `/api/auth/*` - Authentication (register, login, get current user)
-  - `/api/dashboard` - User dashboard data
-  - `/api/arbitrage-opportunities` - Trading opportunities
-  - `/api/transactions/*` - Transaction management (deposits, withdrawals)
-  - `/api/admin/*` - Admin operations (user management, transaction approval, balance adjustments)
-
-**Authentication Flow:**
-- JWT tokens stored in localStorage on client
-- Authorization header (`Bearer <token>`) for protected endpoints
-- Middleware: `authMiddleware` validates token and injects user info
-- Role-based access: `adminMiddleware` restricts admin-only endpoints
-
-**Data Models (SQLite Tables):**
-- `users` - User accounts with email, hashed password, admin flag
-- `wallets` - User balances (total and available USD)
-- `portfolio_positions` - Asset holdings with P&L tracking
-- `transactions` - Deposits, withdrawals, trades with status tracking
-- `admin_adjustments` - Manual balance adjustments by admins
+The backend is an Express.js server built with TypeScript, supporting both development (with Vite HMR) and production environments. It provides a RESTful API with endpoints for authentication, dashboard data, arbitrage opportunities, transactions, and admin operations. JWT-based authentication with bcrypt password hashing is used, storing tokens client-side in localStorage. Middleware handles token validation and role-based access control (`authMiddleware`, `adminMiddleware`).
 
 ### Database Layer
 
-**ORM/Query Builder:**
-- Drizzle ORM configured for SQLite (schema defined in shared/schema.ts)
-- Raw better-sqlite3 driver for actual database operations
-- Schema defines tables with TypeScript types and Zod validation schemas
-
-**Storage Pattern:**
-- Synchronous SQLite operations via better-sqlite3
-- Database file: `database.db` in project root
-- Schema initialization on server start (CREATE TABLE IF NOT EXISTS)
-- Prepared statements and transactions for data integrity
-
-**Seeding:**
-- Default admin user created on initialization:
-  - Email: admin@site.com
-  - Password: Admin123!
-  - isAdmin: true
+The project uses SQLite as its primary database, managed by Drizzle ORM and the better-sqlite3 driver. The schema (defined in `shared/schema.ts`) includes tables for `users`, `wallets`, `portfolio_positions`, `transactions`, and `admin_adjustments`. Database initialization and schema creation are handled on server start. A default admin user (`admin@site.com` / `Admin123!`) is seeded, and admin accounts are guaranteed on every server startup, with password verification and potential reset/promotion.
 
 ### Authentication & Authorization
 
-**Security Measures:**
-- Passwords hashed with bcryptjs (10 salt rounds)
-- JWT secret stored in environment variable (fallback for dev)
-- Token expiration: 7 days
-- Protected routes check token validity before rendering
-- Admin routes require both valid token AND admin flag
-
-**Session Management:**
-- Stateless JWT authentication (no server-side sessions)
-- Token stored client-side in localStorage
-- AuthContext provides login/logout/register methods
-- Automatic token validation on app mount
+Security measures include bcryptjs (10 salt rounds) for password hashing, JWT tokens (7-day expiration) stored in localStorage, and environment variables for the JWT secret. Protected routes require a valid token, and admin routes additionally check for an admin flag, ensuring role-based access control.
 
 ### Development Workflow
 
-**Build Process:**
-- Development: Vite dev server with HMR, Express API proxy
-- Production: Vite builds client to `dist/public`, esbuild bundles server to `dist/index.js`
-- Type checking: Shared types between client/server via `@shared` path alias
-
-**Path Aliases:**
-- `@/*` → client/src/*
-- `@shared/*` → shared/*
-- `@assets/*` → attached_assets/*
-
-**Environment Modes:**
-- Development: tsx with hot reload, Vite middleware mode
-- Production: Compiled ES modules, static file serving
+The project uses Vite for frontend development and building, with esbuild for backend production builds. Type checking is enforced across the full stack using TypeScript and shared types. Path aliases (`@/*`, `@shared/*`, `@assets/*`) streamline imports.
 
 ## External Dependencies
 
 ### UI Component Library
-- **shadcn/ui**: Comprehensive React component library built on Radix UI primitives
-- **Radix UI**: Unstyled, accessible component primitives (dialogs, dropdowns, menus, etc.)
-- **TailwindCSS**: Utility-first CSS framework with custom theme configuration
-- **class-variance-authority & clsx**: Dynamic className composition
+- **shadcn/ui**: React component library built on Radix UI.
+- **Radix UI**: Unstyled, accessible component primitives.
+- **TailwindCSS**: Utility-first CSS framework.
+- **class-variance-authority & clsx**: For dynamic className composition.
 
 ### Database
-- **better-sqlite3**: Synchronous SQLite3 driver for Node.js
-- **Drizzle Kit**: Schema management and migrations (configured but migrations not currently used)
-- **@neondatabase/serverless**: Neon serverless Postgres driver (configured but not actively used; SQLite is primary)
+- **better-sqlite3**: Synchronous SQLite3 driver for Node.js.
+- **Drizzle Kit**: Schema management.
+- **@neondatabase/serverless**: Configured but not actively used (SQLite is primary).
 
 ### Authentication & Security
-- **bcryptjs**: Password hashing library
-- **jsonwebtoken**: JWT token generation and validation
+- **bcryptjs**: Password hashing.
+- **jsonwebtoken**: JWT token generation and validation.
 
 ### State & Data Fetching
-- **@tanstack/react-query**: Server state management, caching, background refetching
-- Configured with infinite stale time and no automatic refetching
+- **@tanstack/react-query**: Server state management, caching, background refetching.
 
 ### Development Tools
-- **Vite**: Frontend build tool and dev server
-- **esbuild**: Fast JavaScript bundler for backend production build
-- **tsx**: TypeScript execution for development server
-- **TypeScript**: Type safety across full stack
+- **Vite**: Frontend build tool and dev server.
+- **esbuild**: Fast JavaScript bundler for backend.
+- **tsx**: TypeScript execution for development server.
+- **TypeScript**: Language for type safety.
 
 ### Routing & Navigation
-- **wouter**: Lightweight client-side routing (~1.2KB)
-- **react-router** alternative for SPA navigation
+- **wouter**: Lightweight client-side routing.
 
 ### Forms & Validation
-- **react-hook-form**: Performant form state management
-- **zod**: TypeScript-first schema validation
-- **@hookform/resolvers**: Bridge between react-hook-form and Zod
-
-### Third-Party Integrations (Planned)
-- **CoinGecko API**: Crypto price data and market information (not yet implemented)
-- **NowPayments API**: Cryptocurrency payment processing for deposits/withdrawals (mock implementation currently)
+- **react-hook-form**: Form state management.
+- **zod**: TypeScript-first schema validation.
+- **@hookform/resolvers**: Bridge between react-hook-form and Zod.
 
 ### Icons & Assets
-- **lucide-react**: Icon library
-- **react-icons**: Additional icon sets (Simple Icons for brand logos like Binance, Coinbase)
+- **lucide-react**: Icon library.
+- **react-icons**: Additional icon sets (e.g., Simple Icons).
 
 ### Font Loading
-- **Google Fonts**: Inter and Space Grotesk fonts loaded via CDN in index.html
-
-### Replit-Specific Plugins
-- **@replit/vite-plugin-runtime-error-modal**: Development error overlay
-- **@replit/vite-plugin-cartographer**: Code navigation (dev only)
-- **@replit/vite-plugin-dev-banner**: Development banner (dev only)
+- **Google Fonts**: Inter font.
