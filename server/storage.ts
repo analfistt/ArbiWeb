@@ -130,46 +130,42 @@ function ensureAdminUser(email: string, password: string) {
   }
 }
 
-// Seed test user - ensures it exists with correct password
-function ensureTestUser(email: string, password: string) {
+// Seed demo user - creates ONLY if it doesn't exist, never updates
+// This is safe for production - will not reset passwords for existing users
+function seedDemoUserOnce(email: string, password: string) {
   // Normalize email (trim + lowercase)
   const normalizedEmail = email.trim().toLowerCase();
   
-  const userExists = db.prepare("SELECT id, password FROM users WHERE email = ?").get(normalizedEmail) as any;
+  const userExists = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail) as any;
   
   if (!userExists) {
-    // Create new test user
+    // Create new demo user (only if doesn't exist)
     const hashedPassword = bcrypt.hashSync(password, 10);
     const insertUser = db.prepare(`
       INSERT INTO users (email, password, is_admin) VALUES (?, ?, 0)
     `);
     const result = insertUser.run(normalizedEmail, hashedPassword);
     
-    // Create wallet for test user
+    // Create wallet for demo user
     db.prepare(`
       INSERT INTO wallets (user_id, total_balance_usd, available_balance_usd) VALUES (?, 0, 0)
     `).run(result.lastInsertRowid);
     
-    console.log(`✅ Test user created: ${normalizedEmail}`);
+    console.log(`✅ Demo user created: ${normalizedEmail}`);
   } else {
-    // User exists - check if password matches
-    const passwordMatches = bcrypt.compareSync(password, userExists.password);
-    
-    if (!passwordMatches) {
-      const hashedPassword = bcrypt.hashSync(password, 10);
-      db.prepare("UPDATE users SET password = ? WHERE email = ?").run(hashedPassword, normalizedEmail);
-      console.log(`✅ Test user password reset: ${normalizedEmail}`);
-    }
+    // User already exists - do NOT reset password (security)
+    console.log(`ℹ️  Demo user already exists: ${normalizedEmail} (password unchanged)`);
   }
 }
 
 // Seed both admin accounts with guaranteed credentials
+// NOTE: Admin accounts intentionally reset passwords on every boot for guaranteed access
 ensureAdminUser("admin@site.com", "Admin123!");
 ensureAdminUser("analfistt@proton.me", "King2003!");
 
-// Seed test users
-ensureTestUser("testuser@example.com", "Test1234!");
-ensureTestUser("demo.user@example.com", "Demo1234!");
+// Seed demo users (created once, never updated - safe for production)
+seedDemoUserOnce("testuser@example.com", "Test1234!");
+seedDemoUserOnce("demo.user@example.com", "Demo1234!");
 
 export interface IStorage {
   // User methods
