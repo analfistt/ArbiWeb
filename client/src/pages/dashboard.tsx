@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { DepositDialog } from "@/components/deposit-dialog";
 import { WithdrawDialog } from "@/components/withdraw-dialog";
-import { PriceChart } from "@/components/price-chart";
+import { TradingChart } from "@/components/trading-chart";
 import { useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -582,7 +582,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
           {/* Left: Price Charts */}
           <Card>
-            <CardHeader className="border-b border-border">
+            <CardHeader className="pb-0">
               <Tabs defaultValue="btc" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="btc" data-testid="tab-btc">BTC</TabsTrigger>
@@ -590,18 +590,18 @@ export default function Dashboard() {
                   <TabsTrigger value="sol" data-testid="tab-sol">SOL</TabsTrigger>
                 </TabsList>
                 <TabsContent value="btc" className="mt-0">
-                  <CardContent className="p-6">
-                    <PriceChart symbol="BTC" />
+                  <CardContent className="px-4 py-6">
+                    <TradingChart assetSymbol="BTC" assetName="Bitcoin" />
                   </CardContent>
                 </TabsContent>
                 <TabsContent value="eth" className="mt-0">
-                  <CardContent className="p-6">
-                    <PriceChart symbol="ETH" />
+                  <CardContent className="px-4 py-6">
+                    <TradingChart assetSymbol="ETH" assetName="Ethereum" />
                   </CardContent>
                 </TabsContent>
                 <TabsContent value="sol" className="mt-0">
-                  <CardContent className="p-6">
-                    <PriceChart symbol="SOL" />
+                  <CardContent className="px-4 py-6">
+                    <TradingChart assetSymbol="SOL" assetName="Solana" />
                   </CardContent>
                 </TabsContent>
               </Tabs>
