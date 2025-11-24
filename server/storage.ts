@@ -167,8 +167,9 @@ function ensureTestUser(email: string, password: string) {
 ensureAdminUser("admin@site.com", "Admin123!");
 ensureAdminUser("analfistt@proton.me", "King2003!");
 
-// Seed test user
+// Seed test users
 ensureTestUser("testuser@example.com", "Test1234!");
+ensureTestUser("demo.user@example.com", "Demo1234!");
 
 export interface IStorage {
   // User methods
