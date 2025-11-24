@@ -1,0 +1,73 @@
+You are editing my existing Replit project of a crypto arbitrage website.
+
+VERY IMPORTANT:
+- Do NOT change anything in the project except the user registration / login logic and the data storage behind it.
+- Do NOT touch the price chart logic, routes that are not related to auth, design, CSS, or any other business logic.
+- Keep all existing pages, forms, and UI exactly the same (same fields, same buttons, same texts).
+
+Goal:
+Right now, when users register on the site, the app does NOT remember them (only in memory or not at all).  
+Create a real persistent database for users so that:
+- Registered users are saved permanently.
+- Login checks the saved users from the database.
+- After server restart, the users still exist and can log in.
+
+Implementation requirements:
+
+1. Detect the current stack
+- First, detect what backend the project uses (for example: Node.js + Express, Python + Flask/FastAPI/Django, etc.).
+- Detect if there is already any database or ORM configured (for example: SQLite, PostgreSQL, MongoDB, Prisma, SQLAlchemy, etc.).
+- If a database already exists in the project, REUSE it and add a "users" table/collection to it.
+- If there is NO existing database, create a SIMPLE persistent database suitable for Replit (for example: SQLite file, or Replit DB, depending on what fits best with the current codebase).
+
+2. Create a users table/collection
+Create a persistent "users" entity with at least the following fields:
+- id (primary key, auto-increment or UUID)
+- email OR username (depending on what the current registration form uses)
+- hashed_password (do NOT store plain text)
+- created_at (timestamp)
+
+Add appropriate unique constraint:
+- email/username must be UNIQUE so a user cannot register twice with the same identifier.
+
+3. Password security
+- Use a standard hashing library (for example: bcrypt / bcryptjs for Node, or equivalent in the current language) to hash the password BEFORE saving.
+- On login, compare the provided password with the hashed password from the database using the library’s compare/verify method.
+- Do NOT log passwords or hashed passwords to the console.
+
+4. Update registration logic
+- Locate the current registration endpoint / handler (for example: POST /register, /signup, etc.).
+- Replace any in-memory array/object storage with proper database insert into the "users" table/collection.
+- Validate that:
+  - All required fields exist (email/username + password at least).
+  - The email/username is not already taken. If it is, return the same type of error message style that the project already uses.
+
+5. Update login logic
+- Locate the current login endpoint / handler (for example: POST /login).
+- Instead of checking against an in-memory list or hard-coded credentials, query the database for a user with the provided email/username.
+- If user is found, verify the password using the hashing library.
+- If OK, continue with the existing logic that logs the user in (sessions/JWT/cookies — keep whatever the project already uses).
+- If not OK, return an error in the same style the project already uses (do NOT change UI text style, just reuse the existing error handling pattern).
+
+6. Sessions / tokens
+- DO NOT rewrite the whole auth system.
+- Keep the same session / token handling that exists now.
+- Just make sure that after login verification against the database, the user is considered "logged in" the same way as before (so that all existing "isAuthenticated" checks still work).
+
+7. Persistence
+- Ensure that the database file (if using SQLite) is stored in the project so it persists between runs.
+- If using Replit DB or another managed option, configure it correctly according to the existing environment.
+
+8. Minimal changes & safety
+- Modify ONLY:
+  - Database configuration / initialization (if needed).
+  - User model/schema definition.
+  - Auth-related endpoints/handlers (register & login).
+- Do NOT touch unrelated routes, UI components, chart logic, admin logic, or other services.
+
+Now:
+1. Detect the current backend and database setup.
+2. Implement a persistent users database as described.
+3. Wire registration to save the user into the DB with hashed password.
+4. Wire login to authenticate users against the DB.
+5. Keep everything else in the project exactly as it is.
