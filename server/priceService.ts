@@ -206,14 +206,23 @@ class PriceService {
   }
 
   private intervalToDays(interval: string): number {
-    // CoinGecko OHLC accurate mappings:
+    // CoinGecko OHLC accurate mappings for Binance-style timeframes:
     // days=1 → hourly candles (24 points)
     // days=7 → 4-hourly candles (~42 points)
     // days=30 → daily candles (30 points)
+    // days=90 → daily candles (90 points)
+    // days=365 → daily candles (365 points)
     const map: Record<string, number> = {
-      "1h": 1,    // Hourly data for 24 hours
-      "4h": 7,    // 4-hourly data for ~7 days
-      "1d": 30,   // Daily data for 30 days
+      "1H": 1,      // Hourly data for 1 hour (actually 24h but we show 1h)
+      "24H": 1,     // Hourly data for 24 hours
+      "7D": 7,      // 4-hourly data for 7 days
+      "30D": 30,    // Daily data for 30 days
+      "90D": 90,    // Daily data for 90 days
+      "1Y": 365,    // Daily data for 1 year
+      // Legacy support
+      "1h": 1,
+      "4h": 7,
+      "1d": 30,
     };
     return map[interval] || 1;
   }

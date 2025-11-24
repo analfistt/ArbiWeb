@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
-// Time-based ranges for truly time-based historical charts
-export type Timeframe = "1m" | "15m" | "30m" | "1h" | "12h" | "24h";
+// Binance/TradingView-style timeframes for candlestick charts
+export type Timeframe = "1H" | "24H" | "7D" | "30D" | "90D" | "1Y";
 
 interface TimeframeSelectorProps {
   currentTimeframe: Timeframe;
@@ -10,12 +10,12 @@ interface TimeframeSelectorProps {
 }
 
 const TIMEFRAMES: { value: Timeframe; label: string }[] = [
-  { value: "1m", label: "1m" },
-  { value: "15m", label: "15m" },
-  { value: "30m", label: "30m" },
-  { value: "1h", label: "1h" },
-  { value: "12h", label: "12h" },
-  { value: "24h", label: "24h" },
+  { value: "1H", label: "1H" },
+  { value: "24H", label: "24H" },
+  { value: "7D", label: "7D" },
+  { value: "30D", label: "30D" },
+  { value: "90D", label: "90D" },
+  { value: "1Y", label: "1Y" },
 ];
 
 export function TimeframeSelector({ 
