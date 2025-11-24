@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
-import { createChart, IChartApi, ISeriesApi, CandlestickData, UTCTimestamp } from "lightweight-charts";
+import { 
+  createChart, 
+  IChartApi, 
+  ISeriesApi, 
+  CandlestickData, 
+  UTCTimestamp,
+  CandlestickSeries
+} from "lightweight-charts";
 
 export interface OHLCData {
   time: number; // Unix timestamp in milliseconds
@@ -60,18 +67,16 @@ export function CandlestickChart({ data, assetSymbol, height = 280 }: Candlestic
       },
       rightPriceScale: {
         borderColor: "#1E293B",
-        textColor: "#64748B",
       },
       timeScale: {
         borderColor: "#1E293B",
-        textColor: "#64748B",
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
-    // Add candlestick series with green/red styling
-    const candlestickSeries = chart.addCandlestickSeries({
+    // Add candlestick series with green/red styling (v5 API)
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#10B981", // Green for bullish candles
       downColor: "#EF4444", // Red for bearish candles
       borderUpColor: "#10B981",
