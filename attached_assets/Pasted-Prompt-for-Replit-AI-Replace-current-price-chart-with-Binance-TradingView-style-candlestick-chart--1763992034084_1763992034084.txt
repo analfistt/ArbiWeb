@@ -1,0 +1,172 @@
+Prompt for Replit AI
+
+(Replace current price chart with Binance/TradingView-style candlestick chart + timeframes)
+
+I already have a crypto price chart in my app (line/area chart), and I’ve asked you before to hook it to CoinGecko timeframes.
+
+Now I want to upgrade it to a full candlestick chart, similar in style to Binance / TradingView:
+
+Candles with open / high / low / close
+
+Green for up candles, red for down candles
+
+Timeframe selector like: 1h · 24h · 7d · 30d · 90d · 1y
+
+📌 Do NOT change any other parts of the app (auth, admin, deposits, dashboard layout, theme). Only replace the chart implementation.
+
+1. Use a candlestick-capable chart library
+
+Use a chart library that supports candlesticks well (choose one and integrate it into the existing React component):
+
+lightweight-charts (preferred – TradingView-like), or
+
+Recharts candlestick, or
+
+Chart.js with financial plugin
+
+Wrap it in a reusable component, e.g. <CandlestickChart />.
+
+The chart should:
+
+Fill the width of its container
+
+Have a dark trading theme (matching current UI)
+
+Show candles + time axis + price axis
+
+2. Fetch OHLC data from CoinGecko
+
+Use CoinGecko’s OHLC endpoint for each asset:
+
+GET /coins/{id}/ohlc?vs_currency=usd&days={days}
+https://api.coingecko.com/api/v3/coins/{id}/ohlc?vs_currency=usd&days=1
+
+
+This returns arrays of:
+
+[ timestamp, open, high, low, close ]
+
+
+Map them into the format required by the chart library, e.g.:
+
+const candles = data.map(([time, open, high, low, close]) => ({
+  time: Math.floor(time / 1000), // seconds for lightweight-charts
+  open,
+  high,
+  low,
+  close,
+}));
+
+
+Use appropriate days for timeframes:
+
+Timeframe	days param
+1h	1
+24h	1
+7d	7
+30d	30
+90d	90
+1y	365
+
+If you need higher resolution (e.g. per minute), you can still use market_chart + transform, but the main chart should be candlesticks based on OHLC data.
+
+3. Timeframe selector + behavior
+
+Above the chart, add a timeframe selector bar:
+
+1H 24H 7D 30D 90D 1Y
+
+Highlight the active timeframe with the current accent color (yellow).
+
+On click:
+
+Update the selected timeframe state.
+
+Fetch new OHLC data from CoinGecko with the correct days parameter.
+
+Replace the candlestick series data with the new candles.
+
+Example logic:
+
+const timeframes = {
+  '1H': 1,
+  '24H': 1,
+  '7D': 7,
+  '30D': 30,
+  '90D': 90,
+  '1Y': 365,
+};
+
+async function handleTimeframeChange(tfKey) {
+  setActiveTimeframe(tfKey);
+  const days = timeframes[tfKey];
+  const ohlc = await fetchOhlcData(coinId, days);
+  setCandles(ohlc);
+}
+
+4. Candlestick styling (Binance-like)
+
+Background:
+
+Dark (#020617 or similar), no bright borders.
+
+Grid lines:
+
+Thin, subtle (#1E293B).
+
+Axes:
+
+Labels in soft gray.
+
+Candles:
+
+Bullish (close > open) → green body + green wicks.
+
+Bearish (close < open) → red body + red wicks.
+
+Cursor:
+
+Add crosshair / vertical guideline on hover.
+
+Tooltip:
+
+Show:
+
+Date/time
+
+Open, High, Low, Close
+
+Dark tooltip with small rounded corners.
+
+5. Integration with existing component
+
+Replace the old line/area price chart with the new <CandlestickChart /> in the dashboard.
+
+Keep the existing header above the chart (asset name, current price, 24h change) and reuse the current theme.
+
+Do NOT modify surrounding layout or other sections (portfolio, positions, opportunities, etc.).
+
+6. Optional: light live-update
+
+If the app already has live price updates, you can:
+
+Update the last candle (current period) in place as new price data arrives.
+
+Do not refetch full history every second; only patch the latest candle.
+
+🔒 Rules
+
+Do NOT change login, signup, admin, DB or API endpoints.
+
+Do NOT change the global theme colors except for what’s needed inside the chart component.
+
+Only modify:
+
+The chart data-fetch logic
+
+The chart rendering component
+
+The timeframe selector linked to this chart
+
+Goal:
+The coin price chart should look like a professional Binance/TradingView-style candlestick chart, with timeframe buttons (1H / 24H / 7D / 30D / 90D / 1Y) that actually change the OHLC history from CoinGecko and redraw the candles.
