@@ -26,6 +26,11 @@ The project uses SQLite as its primary database, managed by Drizzle ORM and the 
 
 Security measures include bcryptjs (10 salt rounds) for password hashing, JWT tokens (7-day expiration) stored in localStorage, and environment variables for the JWT secret. Protected routes require a valid token, and admin routes additionally check for an admin flag, ensuring role-based access control.
 
+**User Seeding Strategy (November 2025 Security Fix):**
+- **Admin Accounts** (`ensureAdminUser`): Passwords are intentionally reset on every server boot for guaranteed recovery access. Current admin accounts: `admin@site.com` / `Admin123!` and `analfistt@proton.me` / `King2003!`
+- **Demo Users** (`seedDemoUserOnce`): Created only if they don't exist. Passwords are NEVER reset on server restart (production-safe). Current demo accounts: `testuser@example.com` / `Test1234!` and `demo.user@example.com` / `Demo1234!`
+- **Email Normalization**: All emails are normalized (trim + toLowerCase) before database operations to ensure consistent login behavior.
+
 ### Development Workflow
 
 The project uses Vite for frontend development and building, with esbuild for backend production builds. Type checking is enforced across the full stack using TypeScript and shared types. Path aliases (`@/*`, `@shared/*`, `@assets/*`) streamline imports.
