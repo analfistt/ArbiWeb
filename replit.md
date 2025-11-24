@@ -48,6 +48,23 @@ Preferred communication style: Simple, everyday language.
 - Dashboard (protected) - user portfolio, transactions, arbitrage opportunities
 - Admin panel (protected, admin-only) - user management, transaction approval
 
+**Trading Chart Component:**
+- Binance-style professional trading charts using Recharts library
+- TradingChart component with area chart + gradient fill visualization
+- Asset-specific color schemes:
+  - BTC: Finance gold (#F3BA2F)
+  - ETH: Crypto blue (#627EEA)
+  - SOL: Crypto green (#14F195)
+- Professional features:
+  - Header bar with asset symbol, name, current price, and 24h change indicator
+  - Dark theme with subtle horizontal gridlines (#1E293B)
+  - Modern tooltips with dark background (#020617) and formatted values
+  - Vertical crosshair cursor that follows mouse interactions
+  - Active dot highlighting on hover
+  - Smooth 800ms load animations
+  - Responsive design (280px height, adaptive width)
+- Dashboard integration with tabbed interface for BTC, ETH, SOL charts
+
 ### Backend Architecture
 
 **Server Setup:**

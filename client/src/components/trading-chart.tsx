@@ -188,9 +188,9 @@ export function TradingChart({ assetSymbol, assetName }: TradingChartProps) {
             }}
             cursor={{
               stroke: colors.line,
-              strokeWidth: 1,
-              strokeDasharray: "4 4",
-              strokeOpacity: 0.5
+              strokeWidth: 1.5,
+              strokeDasharray: "3 3",
+              strokeOpacity: 0.7
             }}
           />
 
